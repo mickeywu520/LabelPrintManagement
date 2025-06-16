@@ -1,6 +1,7 @@
 package com.android.labelprintmanagement;
 
 import androidx.appcompat.app.AppCompatActivity;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -19,6 +20,9 @@ import android.widget.LinearLayout; // Added import for LinearLayout
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.labelprintmanagement.printer.PrintData;
+import com.android.labelprintmanagement.printer.PrinterManager;
+import com.android.labelprintmanagement.printer.PrinterSelectionDialog;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
@@ -35,7 +39,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements PrinterManager.PrinterConnectionCallback {
 
     private static final String TAG = "MainActivity";
     private static final String SERVER_BASE_URL = "http://192.168.0.13:100/";
@@ -48,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
     private MaterialCardView cardLabelPreview;
     private TextView tvVendor, tvPartName, tvPartNo, tvDate;
     private ImageView ivServerStatus; // Server status icon
+    private ImageView ivBluetoothStatus; // Bluetooth status icon
     private LinearLayout layoutStep1; // Step 1 layout
 
     // New TextViews for displaying fetched data in Step 2
@@ -55,10 +60,14 @@ public class MainActivity extends AppCompatActivity {
     // Removed redundant TextViews: tvTypeDisplay, tvItemNoDisplay, tvOrderNoDisplay
     // Removed ImageView ivArborLogoDisplay, ivQrCodeDisplay;
 
-
     // 儲存從伺服器獲取的固定資料
     private JSONObject fetchedData;
     private boolean isServerConnected = false; // New flag for server connection status
+
+    // 列印管理相關
+    private PrinterManager printerManager;
+    private PrinterSelectionDialog printerSelectionDialog;
+    private boolean isPrinterConnected = false;
 
     private OkHttpClient httpClient;
 
@@ -68,6 +77,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         httpClient = new OkHttpClient();
+
+        // 初始化列印管理器
+        initializePrinterManager();
 
         // 初始化 UI 元件
         initializeUI();
@@ -83,6 +95,29 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         btnPreview.setOnClickListener(v -> showPreviewDialog());
+    }
+
+    private void initializePrinterManager() {
+        printerManager = new PrinterManager(this);
+        printerManager.setCallback(this);
+
+        printerSelectionDialog = new PrinterSelectionDialog(this, printerManager);
+        printerSelectionDialog.setCallback(new PrinterSelectionDialog.PrinterSelectionCallback() {
+            @Override
+            public void onBluetoothPrinterSelected(BluetoothDevice device) {
+                printerManager.connectToBluetoothPrinter(device);
+            }
+
+            @Override
+            public void onWifiPrinterSelected(String ip, int port) {
+                printerManager.connectToWifiPrinter(ip, port);
+            }
+
+            @Override
+            public void onCancel() {
+                Toast.makeText(MainActivity.this, "已取消列印機選擇", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void initializeUI() {
@@ -106,6 +141,9 @@ public class MainActivity extends AppCompatActivity {
 
         ivServerStatus = findViewById(R.id.ivServerStatus); // Initialize server status icon
         ivServerStatus.setOnClickListener(v -> checkWifiAndServerStatus()); // Set click listener for server icon
+
+        ivBluetoothStatus = findViewById(R.id.ivBluetoothStatus); // Initialize bluetooth status icon
+        ivBluetoothStatus.setOnClickListener(v -> checkBluetoothAndPrinterStatus()); // Set click listener for bluetooth icon
 
         layoutStep1 = findViewById(R.id.layoutStep1); // Initialize layoutStep1
         btnBackToStep1 = findViewById(R.id.btnBackToStep1); // Initialize btnBackToStep1
@@ -135,6 +173,46 @@ public class MainActivity extends AppCompatActivity {
 
         Toast.makeText(this, "正在檢查伺服器連線...", Toast.LENGTH_SHORT).show();
         checkServerStatus();
+    }
+
+    private void checkBluetoothAndPrinterStatus() {
+        if (!printerManager.isBluetoothAvailable()) {
+            Toast.makeText(this, "此設備不支援藍芽功能", Toast.LENGTH_SHORT).show();
+            updateBluetoothIcon(false);
+            return;
+        }
+
+        if (!printerManager.isBluetoothEnabled()) {
+            showBluetoothSettingsDialog();
+            updateBluetoothIcon(false);
+            return;
+        }
+
+        if (!printerManager.hasBluetoothPermissions()) {
+            Toast.makeText(this, "缺少藍芽權限，請在設定中授予權限", Toast.LENGTH_LONG).show();
+            updateBluetoothIcon(false);
+            return;
+        }
+
+        // 如果已經連線，顯示狀態；否則顯示列印機選擇對話框
+        if (isPrinterConnected) {
+            Toast.makeText(this, "列印機已連線", Toast.LENGTH_SHORT).show();
+        } else {
+            printerSelectionDialog.showPrinterTypeSelection();
+        }
+    }
+
+    private void showBluetoothSettingsDialog() {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("藍芽未開啟")
+                .setMessage("請開啟藍芽以連線至列印機。")
+                .setPositiveButton("前往設定", (dialog, which) -> {
+                    startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS));
+                })
+                .setNegativeButton("取消", (dialog, which) -> {
+                    Toast.makeText(MainActivity.this, "藍芽未開啟，無法連線列印機。", Toast.LENGTH_SHORT).show();
+                })
+                .show();
     }
 
     private boolean isWifiConnected() {
@@ -274,6 +352,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updateBluetoothIcon(boolean isConnected) {
+        if (isConnected) {
+            ivBluetoothStatus.setColorFilter(Color.BLUE); // Set to blue for connected
+        } else {
+            ivBluetoothStatus.setColorFilter(Color.parseColor("#808080")); // Set to grayscale for disconnected
+        }
+    }
+
     private void populateUIWithData() throws JSONException {
         // 填入固定資料
         tvVendor.setText("廠商: " + fetchedData.getString("供應廠商名稱"));
@@ -409,13 +495,99 @@ public class MainActivity extends AppCompatActivity {
         new MaterialAlertDialogBuilder(this)
                 .setView(dialogView)
                 .setPositiveButton("確認列印", (dialog, which) -> {
-                    // TODO: 在這裡執行您的藍牙列印程式碼
-                    // 您可以從 EditText 中獲取所有需要的值, 例如:
-                    // String finalQuantity = etQuantity.getText().toString();
-
-                    Toast.makeText(MainActivity.this, "已發送至印表機", Toast.LENGTH_SHORT).show();
+                    performPrintWithChecks();
                 })
                 .setNegativeButton("關閉", (dialog, which) -> dialog.dismiss())
                 .show();
+    }
+
+    /**
+     * 執行列印前的檢查和列印操作
+     */
+    private void performPrintWithChecks() {
+        // 1. 檢查是否有資料
+        if (fetchedData == null) {
+            Toast.makeText(this, "請先獲取資料", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 2. 檢查列印機連線狀態
+        if (!isPrinterConnected) {
+            Toast.makeText(this, "列印機未連線，請先連線列印機", Toast.LENGTH_LONG).show();
+            checkBluetoothAndPrinterStatus(); // 自動顯示列印機選擇對話框
+            return;
+        }
+
+        // 3. 驗證輸入資料
+        String quantity = etQuantity.getText().toString().trim();
+        String dc = etDC.getText().toString().trim();
+        String hwVer = etHwVer.getText().toString().trim();
+        String fwVer = etFwVer.getText().toString().trim();
+
+        if (quantity.isEmpty()) {
+            Toast.makeText(this, "請輸入數量", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 4. 創建列印資料
+        PrintData printData = new PrintData(fetchedData, quantity, dc, hwVer, fwVer);
+
+        // 5. 驗證列印資料
+        if (!printData.isValid()) {
+            Toast.makeText(this, "列印資料不完整", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 6. 執行列印
+        Toast.makeText(this, "正在發送列印指令...", Toast.LENGTH_SHORT).show();
+        printerManager.printLabel(printData);
+    }
+
+    // 實現 PrinterManager.PrinterConnectionCallback 介面
+    @Override
+    public void onConnectionStatusChanged(PrinterManager.ConnectionStatus status, String message) {
+        runOnUiThread(() -> {
+            switch (status) {
+                case CONNECTING:
+                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+                    updateBluetoothIcon(false);
+                    isPrinterConnected = false;
+                    break;
+                case CONNECTED:
+                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+                    updateBluetoothIcon(true);
+                    isPrinterConnected = true;
+                    break;
+                case DISCONNECTED:
+                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+                    updateBluetoothIcon(false);
+                    isPrinterConnected = false;
+                    break;
+                case ERROR:
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                    updateBluetoothIcon(false);
+                    isPrinterConnected = false;
+                    break;
+            }
+        });
+    }
+
+    @Override
+    public void onPrintResult(boolean success, String message) {
+        runOnUiThread(() -> {
+            if (success) {
+                Toast.makeText(this, "列印成功: " + message, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "列印失敗: " + message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    @Override
+    public void onDeviceFound(BluetoothDevice device) {
+        // 可以在這裡處理發現新設備的邏輯
+        runOnUiThread(() -> {
+            Log.d(TAG, "Found device: " + device.getAddress());
+        });
     }
 }
