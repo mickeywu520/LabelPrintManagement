@@ -1,0 +1,258 @@
+<!-- 檔案: app/src/main/res/layout/activity_main.xml -->
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F3F4F6"
+    tools:context=".MainActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="標籤列印程式"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/black"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"/>
+
+            <ImageView
+                android:id="@+id/ivServerStatus"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_server_gray"
+                android:layout_toStartOf="@+id/ivBluetoothStatus"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="Server Status"
+                android:tint="#808080"/> <!-- Default grayscale tint -->
+
+            <ImageView
+                android:id="@+id/ivBluetoothStatus"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_bluetooth_gray"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:contentDescription="Bluetooth Status"
+                android:tint="#808080"/> <!-- Default grayscale tint -->
+        </RelativeLayout>
+
+        <!-- 步驟一: 查詢資料卡片 -->
+        <LinearLayout
+            android:id="@+id/layoutStep1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="步驟一：查詢資料"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/black"
+                        android:layout_marginBottom="16dp"/>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="進貨單別 (DocType)">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etDocType"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"/>
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="進貨單號 (DocNumber)">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etDocNumber"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"/>
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="進貨項次 (DocItem)">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etDocItem"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"/>
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <Button
+                        android:id="@+id/btnFetchData"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="獲取資料"
+                        android:layout_marginTop="16dp"
+                        android:paddingVertical="12dp"/>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- 步驟二: 預覽與編輯卡片 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardLabelPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="步驟二：預覽與編輯標籤"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/black"
+                    android:layout_marginBottom="16dp"/>
+
+                <!-- 顯示從API獲取的標籤內容 -->
+                <TextView android:id="@+id/tvVendor" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" tools:text="廠商: 惟峰科技股份有限公司" />
+                <TextView android:id="@+id/tvPartName" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:layout_marginTop="4dp" tools:text="品名: ELIT-1271-PE BOTTOM COVER" />
+                <TextView android:id="@+id/tvPartNo" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:layout_marginTop="4dp" tools:text="料號: 3711271800000P" />
+                <TextView android:id="@+id/tvDate" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:layout_marginTop="4dp" tools:text="日期: 2025/06/11" />
+
+                <TextView android:id="@+id/tvDocTypeDisplay" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:layout_marginTop="4dp" tools:text="進貨單別: 3421" />
+                <TextView android:id="@+id/tvDocNumberDisplay" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:layout_marginTop="4dp" tools:text="進貨單號: 114060252" />
+                <TextView android:id="@+id/tvDocItemDisplay" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:layout_marginTop="4dp" tools:text="進貨項次: 0001" />
+                <TextView android:id="@+id/tvVendorCode" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:layout_marginTop="4dp" tools:text="供應廠商代號: LUF002" />
+                <TextView android:id="@+id/tvSpec" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:layout_marginTop="4dp" tools:text="規格: SGCC,T=1.2mm,外觀烤漆,BLACK" />
+                <TextView android:id="@+id/tvMonthDisplay" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:layout_marginTop="4dp" tools:text="月份: 6" />
+                <!-- Removed redundant TextViews: tvTypeDisplay, tvItemNoDisplay, tvOrderNoDisplay -->
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?android:attr/listDivider" android:layout_marginVertical="12dp"/>
+
+                <!-- 可編輯欄位 -->
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="數量">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etQuantity"
+                        android:inputType="numberDecimal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="D/C">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etDC"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="HW Ver">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etHwVer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="FW Ver">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etFwVer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <Button
+                    android:id="@+id/btnBackToStep1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="回上一步"
+                    android:layout_marginTop="16dp"
+                    android:paddingVertical="12dp"
+                    android:visibility="gone"/>
+
+                <!-- 預覽按鈕 (Moved from outside) -->
+                <Button
+                    android:id="@+id/btnPreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="預覽列印內容"
+                    android:layout_marginTop="16dp"
+                    android:paddingVertical="12dp"
+                    android:visibility="gone"/>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</ScrollView>

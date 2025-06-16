@@ -1,0 +1,110 @@
+<!-- 檔案: app/src/main/res/layout/dialog_print_preview.xml -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TableLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:stretchColumns="1,3"
+        android:background="@drawable/border"
+        android:padding="1dp">
+
+        <!-- Row 1: 廠商, XX科技(股)公司, 月份, 6, ARBOR logo -->
+        <TableRow android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="廠商" style="@style/LabelTextStyle" android:background="@drawable/cell_border" android:layout_width="0dp" android:layout_weight="1"/>
+            <TextView android:id="@+id/preview_tvVendor" style="@style/ValueTextStyle" android:text="XX科技(股)公司" android:background="@drawable/cell_border" android:layout_width="0dp" android:layout_weight="2"/>
+            <TextView android:text="月份" style="@style/LabelTextStyle" android:background="@drawable/cell_border" android:layout_width="0dp" android:layout_weight="1"/>
+            <TextView android:id="@+id/preview_tvMonth" style="@style/ValueTextStyle" android:text="6" android:background="@drawable/cell_border" android:layout_width="0dp" android:layout_weight="1"/>
+            <ImageView
+                android:id="@+id/preview_ivArborLogo"
+                android:layout_width="80dp"
+                android:layout_height="40dp"
+                android:src="@drawable/arbor_logo_placeholder"
+                android:scaleType="fitCenter"
+                android:adjustViewBounds="true"
+                android:background="@drawable/cell_border"
+                android:padding="4dp"
+                android:layout_span="1"/>
+        </TableRow>
+
+        <!-- Row 2: 品名, IC...IC example -->
+        <TableRow android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="品名" style="@style/LabelTextStyle" android:background="@drawable/cell_border"/>
+            <TextView android:id="@+id/preview_tvPartName" style="@style/ValueTextStyle" android:text="IC...........IC example" android:background="@drawable/cell_border" android:layout_span="4"/>
+        </TableRow>
+
+        <!-- Row 3: 單別, A511, 項次, 0001 -->
+        <TableRow android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="單別" style="@style/LabelTextStyle" android:background="@drawable/cell_border"/>
+            <TextView android:id="@+id/preview_tvType" style="@style/ValueTextStyle" android:text="A511" android:background="@drawable/cell_border"/>
+            <TextView android:text="項次" style="@style/LabelTextStyle" android:background="@drawable/cell_border"/>
+            <TextView android:id="@+id/preview_tvItemNo" style="@style/ValueTextStyle" android:text="0001" android:background="@drawable/cell_border" android:layout_span="2"/>
+        </TableRow>
+
+        <!-- Row 4: 單號, 10302123456 -->
+        <TableRow android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="單號" style="@style/LabelTextStyle" android:background="@drawable/cell_border"/>
+            <TextView android:id="@+id/preview_tvOrderNo" style="@style/ValueTextStyle" android:text="10302123456" android:background="@drawable/cell_border" android:layout_span="4"/>
+        </TableRow>
+
+        <!-- Row 5: 料號, 1710002190000P -->
+        <TableRow android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="料號" style="@style/LabelTextStyle" android:background="@drawable/cell_border"/>
+            <TextView android:id="@+id/preview_tvPartNo" style="@style/ValueTextStyle" android:text="1710002190000P" android:background="@drawable/cell_border" android:layout_span="4"/>
+        </TableRow>
+
+        <!-- Row 6: 數量, 100000 PCS -->
+        <TableRow android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="數量" style="@style/LabelTextStyle" android:background="@drawable/cell_border"/>
+            <TextView android:id="@+id/preview_tvQuantity" style="@style/ValueTextStyle" android:text="100000" android:background="@drawable/cell_border"/>
+            <TextView android:text="PCS" style="@style/ValueTextStyle" android:background="@drawable/cell_border" android:layout_span="3" android:gravity="center"/>
+<!--            <TextView android:layout_span="1" android:background="@drawable/cell_border"/> &lt;!&ndash; Empty cell to fill the row &ndash;&gt;-->
+        </TableRow>
+
+        <!-- Row 7: D/C, 041301, 備註, QR Code -->
+        <TableRow android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="D/C" style="@style/LabelTextStyle" android:background="@drawable/cell_border"/>
+            <TextView android:id="@+id/preview_tvDC" style="@style/ValueTextStyle" android:text="041301" android:background="@drawable/cell_border"/>
+            <TextView android:text="備註" style="@style/LabelTextStyle" android:background="@drawable/cell_border" android:gravity="center" android:layout_span="3"/>
+        </TableRow>
+
+        <!-- Row 8: HW Ver, V1.01 -->
+        <TableRow android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="HW Ver" style="@style/LabelTextStyle" android:background="@drawable/cell_border"/>
+            <TextView android:id="@+id/preview_tvHwVer" style="@style/ValueTextStyle" android:text="V1.01" android:background="@drawable/cell_border" android:layout_span="1"/>
+<!--            <TextView android:layout_span="2" android:background="@drawable/cell_border"/> &lt;!&ndash; Empty cells to fill the row &ndash;&gt;-->
+        </TableRow>
+
+        <!-- Row 9: FW Ver, V1.6F -->
+        <TableRow android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="FW Ver" style="@style/LabelTextStyle" android:background="@drawable/cell_border"/>
+            <TextView android:id="@+id/preview_tvFwVer" style="@style/ValueTextStyle" android:text="V1.6F" android:background="@drawable/cell_border" android:layout_span="1"/>
+<!--            <TextView android:layout_span="2" android:background="@drawable/cell_border"/> &lt;!&ndash; Empty cells to fill the row &ndash;&gt;-->
+        </TableRow>
+
+        <!-- Row 10: 日期, 2017/10/26 -->
+        <TableRow android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="日期" style="@style/LabelTextStyle" android:background="@drawable/cell_border"/>
+            <TextView android:id="@+id/preview_tvDate" style="@style/ValueTextStyle" android:text="2017/10/26" android:background="@drawable/cell_border" android:layout_span="1"/>
+<!--            <TextView android:layout_span="2" android:background="@drawable/cell_border"/> &lt;!&ndash; Empty cells to fill the row &ndash;&gt;-->
+        </TableRow>
+
+        <!--            <ImageView-->
+        <!--                android:id="@+id/preview_ivQrCode"-->
+        <!--                android:layout_width="100dp"-->
+        <!--                android:layout_height="100dp"-->
+        <!--                android:src="@drawable/qr_code_placeholder"-->
+        <!--                android:scaleType="fitCenter"-->
+        <!--                android:adjustViewBounds="true"-->
+        <!--                android:background="@drawable/cell_border"-->
+        <!--                android:padding="4dp"-->
+        <!--                android:layout_column="2"-->
+        <!--                android:layout_span="2"-->
+        <!--                android:layout_rowSpan="4"/>-->
+
+    </TableLayout>
+</LinearLayout>
