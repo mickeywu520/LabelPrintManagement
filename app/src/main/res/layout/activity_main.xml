@@ -89,7 +89,8 @@
                             android:id="@+id/etDocType"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="number"/>
+                            android:inputType="number"
+                            android:imeOptions="actionNext"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -103,7 +104,8 @@
                             android:id="@+id/etDocNumber"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="number"/>
+                            android:inputType="number"
+                            android:imeOptions="actionNext"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -117,7 +119,8 @@
                             android:id="@+id/etDocItem"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="number"/>
+                            android:inputType="number"
+                            android:imeOptions="actionDone"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <Button
@@ -194,7 +197,8 @@
                         android:id="@+id/etQuantity"
                         android:inputType="numberDecimal"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"/>
+                        android:layout_height="wrap_content"
+                        android:imeOptions="actionNext"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -206,7 +210,8 @@
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etDC"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"/>
+                        android:layout_height="wrap_content"
+                        android:imeOptions="actionNext"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -218,7 +223,8 @@
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etHwVer"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"/>
+                        android:layout_height="wrap_content"
+                        android:imeOptions="actionNext"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -230,7 +236,8 @@
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etFwVer"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"/>
+                        android:layout_height="wrap_content"
+                        android:imeOptions="actionDone"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <Button

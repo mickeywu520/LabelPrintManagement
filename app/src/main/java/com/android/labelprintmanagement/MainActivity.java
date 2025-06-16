@@ -12,8 +12,10 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout; // Added import for LinearLayout
@@ -162,6 +164,79 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         tvMonthDisplay = findViewById(R.id.tvMonthDisplay);
         // Removed initialization for tvTypeDisplay, tvItemNoDisplay, tvOrderNoDisplay
         // Removed initialization for ivArborLogoDisplay and ivQrCodeDisplay
+
+        // 設定 EditText 欄位間的 Enter 鍵跳轉
+        setupEditTextNavigation();
+    }
+
+    /**
+     * 設定 EditText 欄位間的 Enter 鍵跳轉功能
+     */
+    private void setupEditTextNavigation() {
+        // 步驟一的 EditText 跳轉
+        etDocType.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_NEXT ||
+                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
+                etDocNumber.requestFocus();
+                return true;
+            }
+            return false;
+        });
+
+        etDocNumber.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_NEXT ||
+                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
+                etDocItem.requestFocus();
+                return true;
+            }
+            return false;
+        });
+
+        etDocItem.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE ||
+                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
+                hideKeyboard();
+                return true;
+            }
+            return false;
+        });
+
+        // 步驟二的 EditText 跳轉
+        etQuantity.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_NEXT ||
+                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
+                etDC.requestFocus();
+                return true;
+            }
+            return false;
+        });
+
+        etDC.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_NEXT ||
+                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
+                etHwVer.requestFocus();
+                return true;
+            }
+            return false;
+        });
+
+        etHwVer.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_NEXT ||
+                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
+                etFwVer.requestFocus();
+                return true;
+            }
+            return false;
+        });
+
+        etFwVer.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE ||
+                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
+                hideKeyboard();
+                return true;
+            }
+            return false;
+        });
     }
 
     private void checkWifiAndServerStatus() {
@@ -577,10 +652,25 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         runOnUiThread(() -> {
             if (success) {
                 Toast.makeText(this, "列印成功: " + message, Toast.LENGTH_SHORT).show();
+                // 列印完成後自動斷線
+                disconnectPrinterAfterDelay();
             } else {
                 Toast.makeText(this, "列印失敗: " + message, Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    /**
+     * 列印完成後延遲斷線
+     * 給予一些時間讓列印機完成處理，然後自動斷線
+     */
+    private void disconnectPrinterAfterDelay() {
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (isPrinterConnected) {
+                printerManager.disconnect();
+                Toast.makeText(this, "列印機已自動斷線", Toast.LENGTH_SHORT).show();
+            }
+        }, 3000); // 3秒後自動斷線
     }
 
     @Override
