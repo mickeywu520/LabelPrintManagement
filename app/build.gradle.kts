@@ -37,8 +37,6 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
-    implementation("com.squareup.okhttp3:okhttp:4.12.0") // For network requests
-    implementation("com.journeyapps:zxing-android-embedded:4.3.0") // For QR code generation
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
