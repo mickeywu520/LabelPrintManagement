@@ -182,7 +182,7 @@ public class PrinterManager {
             notifyPrintResult(false, "列印機未連線");
             return;
         }
-        
+
         // TODO: 根據列印機類型發送相應的列印指令
         switch (currentPrinterType) {
             case BLUETOOTH:
@@ -193,6 +193,29 @@ public class PrinterManager {
                 break;
             case USB:
                 printViaUsb(printData);
+                break;
+        }
+    }
+
+    /**
+     * 發送小包裝標籤列印指令
+     */
+    public void printSmallPackageLabel(SmallPackagePrintData printData) {
+        if (currentStatus != ConnectionStatus.CONNECTED) {
+            notifyPrintResult(false, "列印機未連線");
+            return;
+        }
+
+        // TODO: 根據列印機類型發送相應的列印指令
+        switch (currentPrinterType) {
+            case BLUETOOTH:
+                printSmallPackageViaBluetooth(printData);
+                break;
+            case WIFI:
+                printSmallPackageViaWifi(printData);
+                break;
+            case USB:
+                printSmallPackageViaUsb(printData);
                 break;
         }
     }
@@ -213,6 +236,51 @@ public class PrinterManager {
         // TODO: 實現USB列印邏輯
         Log.d(TAG, "Printing via USB: " + printData.toString());
         notifyPrintResult(true, "USB列印完成");
+    }
+
+    private void printSmallPackageViaBluetooth(SmallPackagePrintData printData) {
+        // TODO: 等待 TSC SDK 整合後實現小包裝標籤藍芽列印邏輯
+        Log.d(TAG, "Printing small package label via Bluetooth: " + printData.toString());
+
+        // 暫時模擬列印成功
+        new Thread(() -> {
+            try {
+                Thread.sleep(1000); // 模擬列印時間
+                notifyPrintResult(true, "小包裝標籤藍芽列印完成 (模擬)");
+            } catch (InterruptedException e) {
+                notifyPrintResult(false, "列印被中斷");
+            }
+        }).start();
+    }
+
+    private void printSmallPackageViaWifi(SmallPackagePrintData printData) {
+        // TODO: 等待 TSC SDK 整合後實現小包裝標籤WiFi列印邏輯
+        Log.d(TAG, "Printing small package label via WiFi: " + printData.toString());
+
+        // 暫時模擬列印成功
+        new Thread(() -> {
+            try {
+                Thread.sleep(1000); // 模擬列印時間
+                notifyPrintResult(true, "小包裝標籤WiFi列印完成 (模擬)");
+            } catch (InterruptedException e) {
+                notifyPrintResult(false, "列印被中斷");
+            }
+        }).start();
+    }
+
+    private void printSmallPackageViaUsb(SmallPackagePrintData printData) {
+        // TODO: 等待 TSC SDK 整合後實現小包裝標籤USB列印邏輯
+        Log.d(TAG, "Printing small package label via USB: " + printData.toString());
+
+        // 暫時模擬列印成功
+        new Thread(() -> {
+            try {
+                Thread.sleep(1000); // 模擬列印時間
+                notifyPrintResult(true, "小包裝標籤USB列印完成 (模擬)");
+            } catch (InterruptedException e) {
+                notifyPrintResult(false, "列印被中斷");
+            }
+        }).start();
     }
     
     public ConnectionStatus getCurrentStatus() {

@@ -1,439 +1,419 @@
 package com.android.labelprintmanagement;
 
-import androidx.appcompat.app.AppCompatActivity;
 import android.bluetooth.BluetoothDevice;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.Settings;
 import android.util.Log;
-import android.view.KeyEvent;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.labelprintmanagement.printer.PrintData;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.android.labelprintmanagement.model.SmallPackageLabelData;
 import com.android.labelprintmanagement.printer.PrinterManager;
 import com.android.labelprintmanagement.printer.PrinterSelectionDialog;
+import com.android.labelprintmanagement.printer.SmallPackagePrintData;
+import com.android.labelprintmanagement.utils.QRCodeParser;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+/**
+ * 小包裝標籤列印主活動
+ * 處理PDA掃描QR碼到列印標籤的完整流程
+ */
 public class MainActivity extends AppCompatActivity implements PrinterManager.PrinterConnectionCallback {
 
     private static final String TAG = "MainActivity";
+    private static final String BARCODE_BROADCAST_ACTION = "com.barcodeservice.broadcast.string";
 
     // UI 元件
-    private TextInputEditText etQuantity, etDC, etHwVer, etFwVer;
-    private Button btnScanQRCode, btnPreview, btnBackToStep1;
-    private MaterialCardView cardLabelPreview;
-    private TextView tvPartName, tvPartNo;
-    private ImageView ivBluetoothStatus;
-    private LinearLayout layoutStep1;
+    private MaterialCardView cardScanStatus, cardQRData, cardLabelPreview;
+    private TextView tvScanStatus;
+    private TextInputEditText etPartNumber, etProductName, etQuantity, etDcCode;
+    private TextView tvPreviewPartNumber, tvPreviewProductName, tvPreviewQuantity, tvPreviewDcCode;
+    private Button btnClear, btnPreview, btnPrint;
+    private ImageView ivBluetoothStatus, ivScanIcon;
 
-    // New TextViews for displaying fetched data in Step 2 (these will be removed or repurposed later)
-    private TextView tvDocTypeDisplay, tvDocNumberDisplay, tvDocItemDisplay, tvVendorCode, tvSpec, tvMonthDisplay;
-
-    // 儲存從QR Code獲取的資料
-    private QRCodeData qrCodeData;
-
-    // 列印管理相關
+    // 數據和管理器
+    private SmallPackageLabelData labelData;
     private PrinterManager printerManager;
     private PrinterSelectionDialog printerSelectionDialog;
     private boolean isPrinterConnected = false;
 
+    // Broadcast Receiver for PDA barcode scanning
+    private BroadcastReceiver barcodeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (BARCODE_BROADCAST_ACTION.equals(intent.getAction())) {
+                Bundle bundle = intent.getExtras();
+                if (bundle != null) {
+                    String barcodedata = bundle.getString("barcodedata");
+                    int symbology = bundle.getInt("symbology");
+
+                    Log.d(TAG, "Received barcode: " + barcodedata + ", symbology: " + symbology);
+                    handleBarcodeScanned(barcodedata);
+                }
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_small_package_label);
+
+        // 初始化數據
+        labelData = new SmallPackageLabelData();
 
         // 初始化列印管理器
         initializePrinterManager();
 
-        // 初始化 UI 元件
+        // 初始化UI
         initializeUI();
 
-        // 設定按鈕點擊事件
-        btnScanQRCode.setOnClickListener(v -> simulateQRCodeScan()); // Changed to simulate scan
-        btnPreview.setOnClickListener(v -> showPreviewDialog());
+        // 註冊廣播接收器
+        registerBarcodeReceiver();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 取消註冊廣播接收器
+        unregisterReceiver(barcodeReceiver);
+
+        // 斷開列印機連線
+        if (printerManager != null) {
+            printerManager.disconnect();
+        }
+    }
+
+    /**
+     * 攔截 Back 鍵事件
+     * 顯示確認對話框詢問用戶是否要離開程式
+     */
+    @Override
+    public void onBackPressed() {
+        showExitConfirmationDialog();
     }
 
     private void initializePrinterManager() {
         printerManager = new PrinterManager(this);
         printerManager.setCallback(this);
-
         printerSelectionDialog = new PrinterSelectionDialog(this, printerManager);
-        printerSelectionDialog.setCallback(new PrinterSelectionDialog.PrinterSelectionCallback() {
-            @Override
-            public void onBluetoothPrinterSelected(BluetoothDevice device) {
-                printerManager.connectToBluetoothPrinter(device);
-            }
-
-            @Override
-            public void onWifiPrinterSelected(String ip, int port) {
-                printerManager.connectToWifiPrinter(ip, port);
-            }
-
-            @Override
-            public void onCancel() {
-                Toast.makeText(MainActivity.this, "已取消列印機選擇", Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
     private void initializeUI() {
-        btnScanQRCode = findViewById(R.id.btnFetchData); // Renamed from btnFetchData
-        btnScanQRCode.setText("掃描QR Code"); // Update button text
-        btnPreview = findViewById(R.id.btnPreview);
-
+        // 初始化卡片
+        cardScanStatus = findViewById(R.id.cardScanStatus);
+        cardQRData = findViewById(R.id.cardQRData);
         cardLabelPreview = findViewById(R.id.cardLabelPreview);
-        tvPartName = findViewById(R.id.tvPartName);
-        tvPartNo = findViewById(R.id.tvPartNo); // Corrected ID to match activity_main.xml
 
+        // 初始化狀態顯示
+        tvScanStatus = findViewById(R.id.tvScanStatus);
+        ivScanIcon = findViewById(R.id.ivScanIcon);
+
+        // 初始化輸入欄位
+        etPartNumber = findViewById(R.id.etPartNumber);
+        etProductName = findViewById(R.id.etProductName);
         etQuantity = findViewById(R.id.etQuantity);
-        etDC = findViewById(R.id.etDC);
-        etHwVer = findViewById(R.id.etHwVer);
-        etFwVer = findViewById(R.id.etFwVer);
+        etDcCode = findViewById(R.id.etDcCode);
 
+        // 初始化預覽欄位
+        tvPreviewPartNumber = findViewById(R.id.tvPreviewPartNumber);
+        tvPreviewProductName = findViewById(R.id.tvPreviewProductName);
+        tvPreviewQuantity = findViewById(R.id.tvPreviewQuantity);
+        tvPreviewDcCode = findViewById(R.id.tvPreviewDcCode);
+
+        // 初始化按鈕
+        btnClear = findViewById(R.id.btnClear);
+        btnPreview = findViewById(R.id.btnPreview);
+        btnPrint = findViewById(R.id.btnPrint);
+
+        // 初始化藍芽狀態圖示
         ivBluetoothStatus = findViewById(R.id.ivBluetoothStatus);
-        ivBluetoothStatus.setOnClickListener(v -> checkBluetoothAndPrinterStatus());
 
-        layoutStep1 = findViewById(R.id.layoutStep1);
-        btnBackToStep1 = findViewById(R.id.btnBackToStep1);
-        btnBackToStep1.setOnClickListener(v -> {
-            layoutStep1.setVisibility(View.VISIBLE);
-            cardLabelPreview.setVisibility(View.GONE);
-            btnPreview.setVisibility(View.GONE);
-            btnBackToStep1.setVisibility(View.GONE);
-            clearUIFields();
-        });
+        // 設置按鈕點擊事件
+        setupButtonListeners();
 
-        // Initialize new TextViews for Step 2 display (these will be removed or repurposed later)
-//        tvDocTypeDisplay = findViewById(R.id.tvDocTypeDisplay);
-//        tvDocNumberDisplay = findViewById(R.id.tvDocNumberDisplay);
-//        tvDocItemDisplay = findViewById(R.id.tvDocItemDisplay);
-//        tvVendorCode = findViewById(R.id.tvVendorCode);
-//        tvSpec = findViewById(R.id.tvSpec);
-//        tvMonthDisplay = findViewById(R.id.tvMonthDisplay);
+        // 設置數量欄位變化監聽
+        setupQuantityListener();
 
-        setupEditTextNavigation();
+        // 添加測試按鈕 (開發階段使用)
+        setupTestButton();
     }
 
-    /**
-     * 設定 EditText 欄位間的 Enter 鍵跳轉功能
-     */
-    private void setupEditTextNavigation() {
-        etQuantity.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_NEXT ||
-                    (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
-                etDC.requestFocus();
-                return true;
-            }
-            return false;
-        });
+    private void setupButtonListeners() {
+        btnClear.setOnClickListener(v -> clearData());
+        btnPreview.setOnClickListener(v -> showPreview());
+        btnPrint.setOnClickListener(v -> printLabel());
+        ivBluetoothStatus.setOnClickListener(v -> checkBluetoothAndPrinterStatus());
+    }
 
-        etDC.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_NEXT ||
-                    (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
-                etHwVer.requestFocus();
-                return true;
+    private void setupQuantityListener() {
+        // 監聽數量欄位變化，自動更新預覽
+        etQuantity.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) {
+                updateQuantityInData();
+                if (cardLabelPreview.getVisibility() == View.VISIBLE) {
+                    updatePreviewDisplay();
+                }
             }
-            return false;
         });
+    }
 
-        etHwVer.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_NEXT ||
-                    (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
-                etFwVer.requestFocus();
-                return true;
-            }
-            return false;
-        });
+    private void registerBarcodeReceiver() {
+        IntentFilter filter = new IntentFilter(BARCODE_BROADCAST_ACTION);
+        registerReceiver(barcodeReceiver, filter);
+        Log.d(TAG, "Barcode receiver registered");
+    }
 
-        etFwVer.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_DONE ||
-                    (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
-                hideKeyboard();
-                return true;
-            }
-            return false;
-        });
+    private void handleBarcodeScanned(String barcodeData) {
+        if (barcodeData == null || barcodeData.trim().isEmpty()) {
+            showToast("掃描數據為空");
+            return;
+        }
+
+        Log.d(TAG, "Processing barcode data: " + barcodeData);
+
+        // 解析QR碼內容
+        QRCodeParser.QRData qrData = QRCodeParser.smartParseQRContent(barcodeData);
+
+        if (qrData != null && qrData.isValid()) {
+            // 更新數據模型
+            labelData = SmallPackageLabelData.fromQRData(qrData);
+
+            // 更新UI顯示
+            updateUIWithScannedData();
+
+            // 更新掃描狀態
+            updateScanStatus("掃描成功！", true);
+
+            showToast("QR碼掃描成功");
+        } else {
+            updateScanStatus("掃描失敗，請重新掃描", false);
+            showToast("QR碼格式錯誤，請重新掃描");
+        }
+    }
+
+    private void updateUIWithScannedData() {
+        // 顯示QR數據卡片
+        cardQRData.setVisibility(View.VISIBLE);
+
+        // 填充數據到輸入欄位
+        etPartNumber.setText(labelData.getPartNumber());
+        etProductName.setText(labelData.getProductName());
+        etQuantity.setText(labelData.getQuantity());
+        etDcCode.setText(labelData.getDcCode());
+
+        // 隱藏預覽卡片（需要用戶點擊預覽按鈕）
+        cardLabelPreview.setVisibility(View.GONE);
+    }
+
+    private void updateScanStatus(String message, boolean success) {
+        tvScanStatus.setText(message);
+        if (success) {
+            ivScanIcon.setColorFilter(getResources().getColor(android.R.color.holo_green_dark));
+        } else {
+            ivScanIcon.setColorFilter(getResources().getColor(android.R.color.holo_red_dark));
+        }
     }
 
     private void checkBluetoothAndPrinterStatus() {
         if (!printerManager.isBluetoothAvailable()) {
-            Toast.makeText(this, "此設備不支援藍芽功能", Toast.LENGTH_SHORT).show();
+            showToast("此設備不支援藍芽功能");
             updateBluetoothIcon(false);
             return;
         }
 
         if (!printerManager.isBluetoothEnabled()) {
-            showBluetoothSettingsDialog();
+            showToast("請啟用藍芽功能");
             updateBluetoothIcon(false);
             return;
         }
 
         if (!printerManager.hasBluetoothPermissions()) {
-            Toast.makeText(this, "缺少藍芽權限，請在設定中授予權限", Toast.LENGTH_LONG).show();
+            showToast("缺少藍芽權限，請在設定中授予權限");
             updateBluetoothIcon(false);
             return;
         }
 
+        // 如果已經連線，顯示狀態；否則顯示列印機選擇對話框
         if (isPrinterConnected) {
-            Toast.makeText(this, "列印機已連線", Toast.LENGTH_SHORT).show();
+            showToast("列印機已連線");
         } else {
             printerSelectionDialog.showPrinterTypeSelection();
         }
     }
 
-    private void showBluetoothSettingsDialog() {
-        new MaterialAlertDialogBuilder(this)
-                .setTitle("藍芽未開啟")
-                .setMessage("請開啟藍芽以連線至列印機。")
-                .setPositiveButton("前往設定", (dialog, which) -> {
-                    startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS));
-                })
-                .setNegativeButton("取消", (dialog, which) -> {
-                    Toast.makeText(MainActivity.this, "藍芽未開啟，無法連線列印機。", Toast.LENGTH_SHORT).show();
-                })
-                .show();
-    }
+    private void clearData() {
+        // 清空數據
+        labelData.clear();
 
-    // Helper method to hide the keyboard
-    private void hideKeyboard() {
-        View view = MainActivity.this.getCurrentFocus();
-        if (view != null) {
-            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-        }
-    }
-
-    private void updateBluetoothIcon(boolean isConnected) {
-        if (isConnected) {
-            ivBluetoothStatus.setColorFilter(Color.BLUE);
-        } else {
-            ivBluetoothStatus.setColorFilter(Color.parseColor("#808080"));
-        }
-    }
-
-    // Placeholder for QR Code scan initiation
-    private void simulateQRCodeScan() {
-        Toast.makeText(this, "請使用內建條碼引擎掃描QR Code", Toast.LENGTH_LONG).show();
-        // Simulate a QR code scan result for testing purposes
-        String simulatedQRCodeContent = "料號:1710002190000P\n品名:FPC-7602 BOTTOM COVER BRACKET\n數量:1000\nD/C:250601";
-        parseQRCodeContent(simulatedQRCodeContent);
-    }
-
-    private void parseQRCodeContent(String qrCodeContent) {
-        Map<String, String> parsedData = new HashMap<>();
-        Pattern pattern = Pattern.compile("(料號|品名|數量|D/C):(.+)");
-        Matcher matcher = pattern.matcher(qrCodeContent);
-
-        while (matcher.find()) {
-            String key = matcher.group(1).trim();
-            String value = matcher.group(2).trim();
-            parsedData.put(key, value);
-        }
-
-        if (parsedData.containsKey("料號") && parsedData.containsKey("品名") &&
-                parsedData.containsKey("數量") && parsedData.containsKey("D/C")) {
-            qrCodeData = new QRCodeData(
-                    parsedData.get("料號"),
-                    parsedData.get("品名"),
-                    parsedData.get("數量"),
-                    parsedData.get("D/C")
-            );
-            populateUIWithData();
-        } else {
-            Toast.makeText(this, "QR Code內容格式不正確", Toast.LENGTH_LONG).show();
-            Log.e(TAG, "QR Code content parsing failed. Missing required fields.");
-        }
-    }
-
-    private void populateUIWithData() {
-        if (qrCodeData == null) {
-            Toast.makeText(this, "無QR Code資料可顯示。", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // 填入從QR Code解析的資料
-        tvPartName.setText("品名: " + qrCodeData.getPartName());
-        tvPartNo.setText("料號: " + qrCodeData.getPartNo());
-
-        // 填入可編輯欄位的預設值
-        etQuantity.setText(qrCodeData.getQuantity());
-        etDC.setText(qrCodeData.getDc());
-        etHwVer.setText("");
-        etFwVer.setText("");
-
-        // Hide Step 1 layout and show Step 2 (preview card)
-        layoutStep1.setVisibility(View.GONE);
-        cardLabelPreview.setVisibility(View.VISIBLE);
-        btnPreview.setVisibility(View.VISIBLE);
-        btnBackToStep1.setVisibility(View.VISIBLE);
-    }
-
-    private void clearUIFields() {
-        tvPartName.setText("品名: ");
-        tvPartNo.setText("料號: ");
+        // 清空輸入欄位
+        etPartNumber.setText("");
+        etProductName.setText("");
         etQuantity.setText("");
-        etDC.setText("");
-        etHwVer.setText("");
-        etFwVer.setText("");
-        qrCodeData = null;
+        etDcCode.setText("");
+
+        // 隱藏卡片
+        cardQRData.setVisibility(View.GONE);
+        cardLabelPreview.setVisibility(View.GONE);
+
+        // 重置掃描狀態
+        updateScanStatus("請使用PDA掃描QR碼...", false);
+        ivScanIcon.setColorFilter(getResources().getColor(android.R.color.darker_gray));
+
+        showToast("數據已清除");
     }
 
-    private boolean validateInputFields() {
+    private void showPreview() {
+        // 更新數據模型中的數量
+        updateQuantityInData();
+
+        // 驗證數據
+        if (!labelData.isValid()) {
+            showToast("數據不完整：" + labelData.getMissingFieldsDescription());
+            return;
+        }
+
+        // 顯示預覽
+        cardLabelPreview.setVisibility(View.VISIBLE);
+        updatePreviewDisplay();
+
+        showToast("預覽已更新");
+    }
+
+    private void updateQuantityInData() {
         String quantity = etQuantity.getText().toString().trim();
-        if (quantity.isEmpty()) {
-            Toast.makeText(this, "請輸入數量。", Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        return true;
+        labelData.setQuantity(quantity);
     }
 
-    private void showPreviewDialog() {
-        if (qrCodeData == null) {
-            Toast.makeText(this, "請先掃描QR Code獲取資料。", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // 建立並加載 Dialog 的 View
-        LayoutInflater inflater = this.getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_print_preview, null);
-
-        // 找到 Dialog 中的 TextView
-        TextView previewPartName = dialogView.findViewById(R.id.preview_tvPartName);
-        TextView previewPartNo = dialogView.findViewById(R.id.preview_tvPartNo);
-        TextView previewQuantity = dialogView.findViewById(R.id.preview_tvQuantity);
-        TextView previewDC = dialogView.findViewById(R.id.preview_tvDC);
-        TextView previewHwVer = dialogView.findViewById(R.id.preview_tvHwVer);
-        TextView previewFwVer = dialogView.findViewById(R.id.preview_tvFwVer);
-        ImageView previewArborLogo = dialogView.findViewById(R.id.preview_ivArborLogo);
-
-        try {
-            // 從 QR Code 資料和 UI 上取得最終要列印的資料並填入
-            previewPartName.setText("品名: " + qrCodeData.getPartName());
-            previewPartNo.setText("料號: " + qrCodeData.getPartNo());
-
-            // 讀取 EditText 中的現有值 (用戶可能已修改)
-            String currentQuantity = etQuantity.getText().toString();
-            String currentDC = etDC.getText().toString();
-            String currentHwVer = etHwVer.getText().toString();
-            String currentFwVer = etFwVer.getText().toString();
-
-            previewQuantity.setText("數量: " + currentQuantity);
-            previewDC.setText("D/C: " + currentDC);
-            previewHwVer.setText("H/W Ver: " + currentHwVer);
-            previewFwVer.setText("F/W Ver: " + currentFwVer);
-
-            // For Arbor Logo, it will show the placeholder drawable set in XML.
-            previewArborLogo.setImageResource(R.drawable.arbor_logo_placeholder);
-
-        } catch (Exception e) { // Catch generic Exception for simplicity, can be more specific
-            Log.e(TAG, "Preview data population failed: " + e.getMessage());
-            Toast.makeText(this, "預覽資料準備失敗", Toast.LENGTH_LONG).show();
-        }
-
-        // 建立 Dialog
-        new MaterialAlertDialogBuilder(this)
-                .setView(dialogView)
-                .setPositiveButton("確認列印", (dialog, which) -> {
-                    performPrintWithChecks();
-                })
-                .setNegativeButton("關閉", (dialog, which) -> dialog.dismiss())
-                .show();
+    private void updatePreviewDisplay() {
+        tvPreviewPartNumber.setText(labelData.getPartNumber());
+        tvPreviewProductName.setText(labelData.getProductName());
+        tvPreviewQuantity.setText(labelData.getFormattedQuantity());
+        tvPreviewDcCode.setText(labelData.getDcCode());
     }
 
-    /**
-     * 執行列印前的檢查和列印操作
-     */
-    private void performPrintWithChecks() {
-        // 1. 檢查是否有資料
-        if (qrCodeData == null) {
-            Toast.makeText(this, "請先掃描QR Code獲取資料。", Toast.LENGTH_SHORT).show();
-            return;
+    private void updateBluetoothIcon(boolean connected) {
+        if (connected) {
+            ivBluetoothStatus.setColorFilter(getResources().getColor(android.R.color.holo_blue_bright));
+        } else {
+            ivBluetoothStatus.setColorFilter(getResources().getColor(android.R.color.darker_gray));
         }
+    }
 
-        // 2. 檢查列印機連線狀態
+    private void printLabel() {
+        // 檢查列印機連線
         if (!isPrinterConnected) {
-            Toast.makeText(this, "列印機未連線，請先連線列印機", Toast.LENGTH_LONG).show();
+            showToast("請先連接列印機");
             checkBluetoothAndPrinterStatus();
             return;
         }
 
-        // 3. 驗證輸入資料
-        String quantity = etQuantity.getText().toString().trim();
-        String dc = etDC.getText().toString().trim();
-        String hwVer = etHwVer.getText().toString().trim();
-        String fwVer = etFwVer.getText().toString().trim();
-
-        if (quantity.isEmpty()) {
-            Toast.makeText(this, "請輸入數量", Toast.LENGTH_SHORT).show();
+        // 更新並驗證數據
+        updateQuantityInData();
+        if (!labelData.isValid()) {
+            showToast("數據不完整：" + labelData.getMissingFieldsDescription());
             return;
         }
 
-        // 4. 創建列印資料
-        PrintData printData = new PrintData(
-                qrCodeData.getPartNo(),
-                qrCodeData.getPartName(),
-                quantity,
-                dc,
-                hwVer,
-                fwVer
-        );
+        // 創建列印數據
+        SmallPackagePrintData printData = new SmallPackagePrintData(labelData);
 
-        // 5. 驗證列印資料
-        if (!printData.isValid()) {
-            Toast.makeText(this, "列印資料不完整", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // 6. 執行列印
-        Toast.makeText(this, "正在發送列印指令...", Toast.LENGTH_SHORT).show();
-        printerManager.printLabel(printData);
+        // 執行列印
+        showToast("正在列印標籤...");
+        printerManager.printSmallPackageLabel(printData);
     }
 
-    // 實現 PrinterManager.PrinterConnectionCallback 介面
+    private void disconnectPrinterAfterDelay() {
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (isPrinterConnected) {
+                printerManager.disconnect();
+                showToast("列印機已自動斷線");
+            }
+        }, 3000);
+    }
+
+    private void showToast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * 設置測試按鈕 (開發階段使用)
+     * 用於模擬 PDA 廣播，方便測試
+     */
+    private void setupTestButton() {
+        // 長按掃描狀態卡片來觸發測試
+        cardScanStatus.setOnLongClickListener(v -> {
+            // 模擬 PDA 廣播
+            String testQRContent = "PN:1710002190000P\n" +
+                                 "DES:FPC-7602 BOTTOM COVER BRACKET\n" +
+                                 "QTY:1000\n" +
+                                 "DC:250601";
+
+            Log.d(TAG, "Test broadcast triggered");
+            handleBarcodeScanned(testQRContent);
+            showToast("測試 QR 碼已掃描");
+            return true;
+        });
+    }
+
+    /**
+     * 顯示離開程式確認對話框
+     * 當用戶按下 Back 鍵時調用
+     */
+    private void showExitConfirmationDialog() {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("離開程式")
+                .setMessage("確定要離開小包裝標籤列印程式嗎？")
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setPositiveButton("確定", (dialog, which) -> {
+                    // 用戶確認離開
+                    Log.d(TAG, "User confirmed exit");
+                    finishAndRemoveTask(); // 完全退出應用程式
+                })
+                .setNegativeButton("取消", (dialog, which) -> {
+                    // 用戶取消，留在當前畫面
+                    Log.d(TAG, "User cancelled exit");
+                    dialog.dismiss();
+                })
+                .setCancelable(false) // 防止點擊對話框外部關閉
+                .show();
+    }
+
+    // PrinterManager.PrinterConnectionCallback 實現
+
     @Override
     public void onConnectionStatusChanged(PrinterManager.ConnectionStatus status, String message) {
         runOnUiThread(() -> {
             switch (status) {
-                case CONNECTING:
-                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-                    updateBluetoothIcon(false);
-                    isPrinterConnected = false;
-                    break;
                 case CONNECTED:
-                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-                    updateBluetoothIcon(true);
                     isPrinterConnected = true;
+                    updateBluetoothIcon(true);
+                    showToast("列印機連線成功");
                     break;
                 case DISCONNECTED:
-                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-                    updateBluetoothIcon(false);
                     isPrinterConnected = false;
+                    updateBluetoothIcon(false);
+                    showToast("列印機已斷線");
+                    break;
+                case CONNECTING:
+                    showToast("正在連線列印機...");
                     break;
                 case ERROR:
-                    Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-                    updateBluetoothIcon(false);
                     isPrinterConnected = false;
+                    updateBluetoothIcon(false);
+                    showToast("列印機連線失敗: " + message);
                     break;
             }
         });
@@ -443,64 +423,19 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
     public void onPrintResult(boolean success, String message) {
         runOnUiThread(() -> {
             if (success) {
-                Toast.makeText(this, "列印成功: " + message, Toast.LENGTH_SHORT).show();
-                // 列印完成後自動斷線
+                showToast("列印成功: " + message);
                 disconnectPrinterAfterDelay();
             } else {
-                Toast.makeText(this, "列印失敗: " + message, Toast.LENGTH_LONG).show();
+                showToast("列印失敗: " + message);
             }
         });
     }
 
-    /**
-     * 列印完成後延遲斷線
-     * 給予一些時間讓列印機完成處理，然後自動斷線
-     */
-    private void disconnectPrinterAfterDelay() {
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (isPrinterConnected) {
-                printerManager.disconnect();
-                Toast.makeText(this, "列印機已自動斷線", Toast.LENGTH_SHORT).show();
-            }
-        }, 3000); // 3秒後自動斷線
-    }
-
     @Override
     public void onDeviceFound(BluetoothDevice device) {
-        // 可以在這裡處理發現新設備的邏輯
         runOnUiThread(() -> {
             Log.d(TAG, "Found device: " + device.getAddress());
         });
     }
 
-    // New data class to hold parsed QR Code content
-    private static class QRCodeData {
-        private String partNo;
-        private String partName;
-        private String quantity;
-        private String dc;
-
-        public QRCodeData(String partNo, String partName, String quantity, String dc) {
-            this.partNo = partNo;
-            this.partName = partName;
-            this.quantity = quantity;
-            this.dc = dc;
-        }
-
-        public String getPartNo() {
-            return partNo;
-        }
-
-        public String getPartName() {
-            return partName;
-        }
-
-        public String getQuantity() {
-            return quantity;
-        }
-
-        public String getDc() {
-            return dc;
-        }
-    }
 }
