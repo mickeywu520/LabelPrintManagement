@@ -268,10 +268,12 @@
                         </LinearLayout>
 
                         <!-- 料號條碼 -->
-                        <View
+                        <ImageView
+                            android:id="@+id/ivPreviewPartNumberBarcode"
                             android:layout_width="match_parent"
                             android:layout_height="20dp"
                             android:background="@drawable/barcode_placeholder"
+                            android:scaleType="fitXY"
                             android:layout_marginBottom="8dp"/>
 
                         <!-- 品名 -->
@@ -331,10 +333,12 @@
                                         android:layout_marginStart="4dp"/>
                                 </LinearLayout>
 
-                                <View
+                                <ImageView
+                                    android:id="@+id/ivPreviewQuantityBarcode"
                                     android:layout_width="60dp"
                                     android:layout_height="15dp"
                                     android:background="@drawable/barcode_placeholder"
+                                    android:scaleType="fitXY"
                                     android:layout_marginTop="2dp"/>
                             </LinearLayout>
 
@@ -366,10 +370,12 @@
                                         android:layout_marginStart="4dp"/>
                                 </LinearLayout>
 
-                                <View
+                                <ImageView
+                                    android:id="@+id/ivPreviewDcBarcode"
                                     android:layout_width="60dp"
                                     android:layout_height="15dp"
                                     android:background="@drawable/barcode_placeholder"
+                                    android:scaleType="fitXY"
                                     android:layout_marginTop="2dp"/>
                             </LinearLayout>
 

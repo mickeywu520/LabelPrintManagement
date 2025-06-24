@@ -22,9 +22,12 @@ import com.android.labelprintmanagement.printer.PrinterManager;
 import com.android.labelprintmanagement.printer.PrinterSelectionDialog;
 import com.android.labelprintmanagement.printer.SmallPackagePrintData;
 import com.android.labelprintmanagement.utils.QRCodeParser;
+import com.android.labelprintmanagement.utils.BarcodeImageGenerator;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
+
+import android.graphics.Bitmap;
 
 /**
  * 小包裝標籤列印主活動
@@ -40,6 +43,7 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
     private TextView tvScanStatus;
     private TextInputEditText etPartNumber, etProductName, etQuantity, etDcCode;
     private TextView tvPreviewPartNumber, tvPreviewProductName, tvPreviewQuantity, tvPreviewDcCode;
+    private ImageView ivPreviewPartNumberBarcode, ivPreviewQuantityBarcode, ivPreviewDcBarcode;
     private Button btnClear, btnPreview, btnPrint;
     private ImageView ivBluetoothStatus, ivScanIcon;
 
@@ -132,6 +136,11 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         tvPreviewProductName = findViewById(R.id.tvPreviewProductName);
         tvPreviewQuantity = findViewById(R.id.tvPreviewQuantity);
         tvPreviewDcCode = findViewById(R.id.tvPreviewDcCode);
+
+        // 初始化預覽條碼
+        ivPreviewPartNumberBarcode = findViewById(R.id.ivPreviewPartNumberBarcode);
+        ivPreviewQuantityBarcode = findViewById(R.id.ivPreviewQuantityBarcode);
+        ivPreviewDcBarcode = findViewById(R.id.ivPreviewDcBarcode);
 
         // 初始化按鈕
         btnClear = findViewById(R.id.btnClear);
@@ -268,6 +277,9 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         cardQRData.setVisibility(View.GONE);
         cardLabelPreview.setVisibility(View.GONE);
 
+        // 重置條碼圖像
+        resetBarcodeImages();
+
         // 重置掃描狀態
         updateScanStatus("請使用PDA掃描QR碼...", false);
         ivScanIcon.setColorFilter(getResources().getColor(android.R.color.darker_gray));
@@ -298,10 +310,67 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
     }
 
     private void updatePreviewDisplay() {
+        // 更新文字內容
         tvPreviewPartNumber.setText(labelData.getPartNumber());
         tvPreviewProductName.setText(labelData.getProductName());
         tvPreviewQuantity.setText(labelData.getFormattedQuantity());
         tvPreviewDcCode.setText(labelData.getDcCode());
+
+        // 生成並顯示條碼圖像
+        generateAndDisplayBarcodes();
+    }
+
+    /**
+     * 生成並顯示條碼圖像
+     */
+    private void generateAndDisplayBarcodes() {
+        // 在背景線程生成條碼，避免阻塞 UI
+        new Thread(() -> {
+            try {
+                // 生成料號條碼
+                Bitmap partNumberBarcode = BarcodeImageGenerator.generatePreviewBarcode(
+                    labelData.getPartNumber(), "partnumber");
+
+                // 生成數量條碼
+                Bitmap quantityBarcode = BarcodeImageGenerator.generatePreviewBarcode(
+                    labelData.getQuantity(), "quantity");
+
+                // 生成 D/C 條碼
+                Bitmap dcBarcode = BarcodeImageGenerator.generatePreviewBarcode(
+                    labelData.getDcCode(), "dc");
+
+                // 在主線程更新 UI
+                runOnUiThread(() -> {
+                    // 設置料號條碼
+                    if (partNumberBarcode != null) {
+                        ivPreviewPartNumberBarcode.setImageBitmap(partNumberBarcode);
+                        ivPreviewPartNumberBarcode.setBackgroundResource(0); // 移除佔位符背景
+                    } else {
+                        Log.w(TAG, "Failed to generate part number barcode");
+                    }
+
+                    // 設置數量條碼
+                    if (quantityBarcode != null) {
+                        ivPreviewQuantityBarcode.setImageBitmap(quantityBarcode);
+                        ivPreviewQuantityBarcode.setBackgroundResource(0); // 移除佔位符背景
+                    } else {
+                        Log.w(TAG, "Failed to generate quantity barcode");
+                    }
+
+                    // 設置 D/C 條碼
+                    if (dcBarcode != null) {
+                        ivPreviewDcBarcode.setImageBitmap(dcBarcode);
+                        ivPreviewDcBarcode.setBackgroundResource(0); // 移除佔位符背景
+                    } else {
+                        Log.w(TAG, "Failed to generate DC barcode");
+                    }
+                });
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error generating barcodes", e);
+                runOnUiThread(() -> showToast("條碼生成失敗"));
+            }
+        }).start();
     }
 
     private void updateBluetoothIcon(boolean connected) {
@@ -309,6 +378,24 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
             ivBluetoothStatus.setColorFilter(getResources().getColor(android.R.color.holo_blue_bright));
         } else {
             ivBluetoothStatus.setColorFilter(getResources().getColor(android.R.color.darker_gray));
+        }
+    }
+
+    /**
+     * 重置條碼圖像為佔位符
+     */
+    private void resetBarcodeImages() {
+        if (ivPreviewPartNumberBarcode != null) {
+            ivPreviewPartNumberBarcode.setImageBitmap(null);
+            ivPreviewPartNumberBarcode.setBackgroundResource(R.drawable.barcode_placeholder);
+        }
+        if (ivPreviewQuantityBarcode != null) {
+            ivPreviewQuantityBarcode.setImageBitmap(null);
+            ivPreviewQuantityBarcode.setBackgroundResource(R.drawable.barcode_placeholder);
+        }
+        if (ivPreviewDcBarcode != null) {
+            ivPreviewDcBarcode.setImageBitmap(null);
+            ivPreviewDcBarcode.setBackgroundResource(R.drawable.barcode_placeholder);
         }
     }
 
