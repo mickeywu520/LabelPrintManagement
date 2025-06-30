@@ -10,10 +10,7 @@ public class TestDataGenerator {
      * 生成測試用的QR碼內容 (新格式)
      */
     public static String generateTestQRContent() {
-        return "PN:1710002190000P\n" +
-               "DES:FPC-7602 BOTTOM COVER BRACKET\n" +
-               "QTY:1000\n" +
-               "DC:250601";
+        return "PN1710002190000P;DESFPC-7602 BOTTOM COVER BRACKET;QTY1000;DC250601";
     }
     
     /**
@@ -27,13 +24,10 @@ public class TestDataGenerator {
     }
     
     /**
-     * 生成另一組測試數據
+     * 生成另一組測試數據 (新格式)
      */
     public static String generateTestQRContent2() {
-        return "PN:3711760236010P\n" +
-               "DES:CONNECTOR HOUSING 2.54MM\n" +
-               "QTY:500\n" +
-               "DC:240815";
+        return "PN3711760236010P;DESCONNECTOR HOUSING 2.54MM;QTY500;DC240815";
     }
     
     /**
@@ -47,32 +41,25 @@ public class TestDataGenerator {
     }
     
     /**
-     * 生成不完整的QR碼內容 (用於測試錯誤處理)
+     * 生成不完整的QR碼內容 (用於測試錯誤處理) (新格式)
      */
     public static String generateIncompleteQRContent() {
-        return "PN:1710002190000P\n" +
-               "DES:FPC-7602 BOTTOM COVER BRACKET\n";
-               // 缺少數量和D/C
+        return "PN1710002190000P;DESFPC-7602 BOTTOM COVER BRACKET";
+        // 缺少數量和D/C
     }
     
     /**
-     * 生成包含特殊字符的QR碼內容
+     * 生成包含特殊字符的QR碼內容 (新格式)
      */
     public static String generateSpecialCharQRContent() {
-        return "PN:ABC-123/DEF_456\n" +
-               "DES:SPECIAL CHAR TEST (BRACKET) & SYMBOL\n" +
-               "QTY:100\n" +
-               "DC:240101";
+        return "PNABC-123/DEF_456;DESSPECIAL CHAR TEST (BRACKET) & SYMBOL;QTY100;DC240101";
     }
     
     /**
-     * 生成長品名的QR碼內容 (測試UI顯示)
+     * 生成長品名的QR碼內容 (測試UI顯示) (新格式)
      */
     public static String generateLongNameQRContent() {
-        return "PN:VERY_LONG_PART_NUMBER_123456789\n" +
-               "DES:THIS IS A VERY LONG PRODUCT NAME THAT MIGHT CAUSE DISPLAY ISSUES IN THE UI LAYOUT\n" +
-               "QTY:2500\n" +
-               "DC:241225";
+        return "PNVERY_LONG_PART_NUMBER_123456789;DESTHIS IS A VERY LONG PRODUCT NAME THAT MIGHT CAUSE DISPLAY ISSUES IN THE UI LAYOUT;QTY2500;DC241225";
     }
     
     /**
@@ -96,8 +83,9 @@ public class TestDataGenerator {
             generateInvalidQRContent(),
             generateIncompleteQRContent(),
             "",
-            "INVALID_FORMAT_NO_COLONS",
-            "PN:\nDES:\nQTY:\nDC:"  // 空值
+            "INVALID_FORMAT_NO_SEMICOLONS",
+            "PN;DES;QTY;DC",  // 空值 (新格式)
+            "PN:\nDES:\nQTY:\nDC:"  // 舊格式空值
         };
     }
     

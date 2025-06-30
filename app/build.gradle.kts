@@ -41,6 +41,7 @@ dependencies {
     // ZXing 條碼生成庫
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation(files("libs\\tscsdk.jar"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

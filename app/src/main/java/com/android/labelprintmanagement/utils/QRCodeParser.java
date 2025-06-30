@@ -58,13 +58,10 @@ public class QRCodeParser {
     }
     
     /**
-     * 解析QR碼內容
+     * 解析QR碼內容 (新格式)
      * 
      * 預期格式:
-     * PN:1710002190000P
-     * DES:FPC-7602 BOTTOM COVER BRACKET
-     * QTY:1000
-     * DC:250601
+     * PN1710002190000P;DESFPC-7602 BOTTOM COVER BRACKET;QTY1000;DC250601
      * 
      * @param qrContent QR碼掃描的原始內容
      * @return 解析後的QRData對象，如果解析失敗返回null
@@ -77,34 +74,22 @@ public class QRCodeParser {
         QRData qrData = new QRData();
         
         try {
-            // 按行分割內容
-            String[] lines = qrContent.trim().split("\\r?\\n");
+            // 按分號分割內容
+            String[] segments = qrContent.trim().split(";");
             
-            for (String line : lines) {
-                line = line.trim();
-                if (line.isEmpty()) continue;
+            for (String segment : segments) {
+                segment = segment.trim();
+                if (segment.isEmpty()) continue;
                 
-                // 查找冒號分隔符
-                int colonIndex = line.indexOf(':');
-                if (colonIndex == -1) continue;
-                
-                String key = line.substring(0, colonIndex).trim().toUpperCase();
-                String value = line.substring(colonIndex + 1).trim();
-                
-                // 根據鍵值設置對應的字段
-                switch (key) {
-                    case "PN":
-                        qrData.setPartNumber(value);
-                        break;
-                    case "DES":
-                        qrData.setDescription(value);
-                        break;
-                    case "QTY":
-                        qrData.setQuantity(value);
-                        break;
-                    case "DC":
-                        qrData.setDcCode(value);
-                        break;
+                // 檢查每個字段的前綴
+                if (segment.startsWith("PN")) {
+                    qrData.setPartNumber(segment.substring(2).trim());
+                } else if (segment.startsWith("DES")) {
+                    qrData.setDescription(segment.substring(3).trim());
+                } else if (segment.startsWith("QTY")) {
+                    qrData.setQuantity(segment.substring(3).trim());
+                } else if (segment.startsWith("DC")) {
+                    qrData.setDcCode(segment.substring(2).trim());
                 }
             }
             
@@ -124,11 +109,17 @@ public class QRCodeParser {
     /**
      * 解析舊格式的QR碼內容（兼容性方法）
      * 
-     * 預期格式:
+     * 預期格式 (多行帶冒號):
      * 料號:1710002190000P 
      * 品名:FPC-7602 BOTTOM COVER BRACKET 
      * 數量:1000 
      * D/C:250601
+     * 
+     * 或英文格式:
+     * PN:1710002190000P
+     * DES:FPC-7602 BOTTOM COVER BRACKET
+     * QTY:1000
+     * DC:250601
      */
     public static QRData parseQRContentLegacy(String qrContent) {
         if (qrContent == null || qrContent.trim().isEmpty()) {
@@ -152,18 +143,22 @@ public class QRCodeParser {
                 String key = line.substring(0, colonIndex).trim();
                 String value = line.substring(colonIndex + 1).trim();
                 
-                // 根據中文鍵值設置對應的字段
+                // 根據中文或英文鍵值設置對應的字段
                 switch (key) {
                     case "料號":
+                    case "PN":
                         qrData.setPartNumber(value);
                         break;
                     case "品名":
+                    case "DES":
                         qrData.setDescription(value);
                         break;
                     case "數量":
+                    case "QTY":
                         qrData.setQuantity(value);
                         break;
                     case "D/C":
+                    case "DC":
                         qrData.setDcCode(value);
                         break;
                 }

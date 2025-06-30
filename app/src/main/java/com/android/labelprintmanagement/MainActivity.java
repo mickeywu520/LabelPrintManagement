@@ -443,10 +443,7 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         // 長按掃描狀態卡片來觸發測試
         cardScanStatus.setOnLongClickListener(v -> {
             // 模擬 PDA 廣播
-            String testQRContent = "PN:1710002190000P\n" +
-                                 "DES:FPC-7602 BOTTOM COVER BRACKET\n" +
-                                 "QTY:1000\n" +
-                                 "DC:250601";
+            String testQRContent = "PN1710002190000P;DESFPC-7602 BOTTOM COVER BRACKET;QTY1000;DC250601";
 
             Log.d(TAG, "Test broadcast triggered");
             handleBarcodeScanned(testQRContent);
