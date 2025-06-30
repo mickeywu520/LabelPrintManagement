@@ -10,6 +10,8 @@ import android.util.Log;
 import androidx.core.app.ActivityCompat;
 import java.util.Set;
 
+import com.android.labelprintmanagement.utils.BluetoothPreferences;
+
 // TSC SDK imports
 import com.example.tscdll.TSCActivity;
 import com.example.tscdll.TscWifiActivity;
@@ -56,9 +58,13 @@ public class PrinterManager {
     private TscWifiActivity tscWifi;
     private String connectedDeviceAddress;
     
+    // 藍芽偏好設置管理器
+    private BluetoothPreferences bluetoothPreferences;
+    
     public PrinterManager(Context context) {
         this.context = context;
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        this.bluetoothPreferences = new BluetoothPreferences(context);
         
         // 初始化TSC SDK實例
         this.tscBluetooth = new TSCActivity();
@@ -120,6 +126,28 @@ public class PrinterManager {
     }
     
     /**
+     * 通過MAC地址連線到藍芽列印機
+     */
+    public void connectToBluetoothPrinter(String macAddress) {
+        if (!isBluetoothEnabled()) {
+            notifyConnectionStatus(ConnectionStatus.ERROR, "藍芽未啟用");
+            return;
+        }
+        
+        if (!hasBluetoothPermissions()) {
+            notifyConnectionStatus(ConnectionStatus.ERROR, "缺少藍芽權限");
+            return;
+        }
+        
+        try {
+            BluetoothDevice device = bluetoothAdapter.getRemoteDevice(macAddress);
+            connectToBluetoothPrinter(device);
+        } catch (IllegalArgumentException e) {
+            notifyConnectionStatus(ConnectionStatus.ERROR, "無效的MAC地址格式: " + macAddress);
+        }
+    }
+    
+    /**
      * 連線到指定的藍芽列印機 (使用TSC SDK)
      */
     public void connectToBluetoothPrinter(BluetoothDevice device) {
@@ -147,13 +175,42 @@ public class PrinterManager {
                 // 使用TSC SDK開啟藍芽連接 (void方法，無返回值)
                 tscBluetooth.openport(connectedDeviceAddress);
                 
-                // TSC SDK的openport是void方法，假設成功執行就是連線成功
-                Log.d(TAG, "TSC Bluetooth connection successful");
-                notifyConnectionStatus(ConnectionStatus.CONNECTED, "TSC藍芽列印機連線成功");
+                // 等待一段時間讓連線建立
+                Thread.sleep(2000);
+                
+                // 嘗試發送測試指令來驗證連線
+                boolean connectionVerified = verifyTSCConnection();
+                
+                if (connectionVerified) {
+                    Log.d(TAG, "TSC Bluetooth connection verified successfully");
+                    
+                    // 保存成功連線的設備MAC地址
+                    bluetoothPreferences.saveConnectedDevice(connectedDeviceAddress);
+                    
+                    notifyConnectionStatus(ConnectionStatus.CONNECTED, "TSC藍芽列印機連線成功");
+                } else {
+                    Log.w(TAG, "TSC Bluetooth connection failed verification");
+                    
+                    // 嘗試關閉連線
+                    try {
+                        tscBluetooth.closeport(1000);
+                    } catch (Exception closeEx) {
+                        Log.w(TAG, "Error closing failed connection", closeEx);
+                    }
+                    
+                    connectedDevice = null;
+                    connectedDeviceAddress = null;
+                    notifyConnectionStatus(ConnectionStatus.ERROR, "無法連線到指定的列印機，請檢查設備是否開啟且在範圍內");
+                }
                 
             } catch (Exception e) {
                 Log.e(TAG, "Exception during TSC Bluetooth connection", e);
-                notifyConnectionStatus(ConnectionStatus.ERROR, "連線異常: " + e.getMessage());
+                
+                // 清理連線狀態
+                connectedDevice = null;
+                connectedDeviceAddress = null;
+                
+                notifyConnectionStatus(ConnectionStatus.ERROR, "連線失敗: " + e.getMessage());
             }
         }).start();
     }
@@ -294,6 +351,20 @@ public class PrinterManager {
 
         new Thread(() -> {
             try {
+                // 檢查連線狀態
+                if (currentStatus != ConnectionStatus.CONNECTED) {
+                    notifyPrintResult(false, "列印機未連線，請先連線列印機");
+                    return;
+                }
+                
+                // 再次驗證連線是否有效
+                if (!verifyTSCConnection()) {
+                    notifyPrintResult(false, "列印機連線已斷開，請重新連線");
+                    // 更新連線狀態
+                    notifyConnectionStatus(ConnectionStatus.DISCONNECTED, "連線已斷開");
+                    return;
+                }
+                
                 // 生成TSC列印指令
                 String tscCommands = generateTSCCommands(printData);
                 Log.d(TAG, "Generated TSC commands: " + tscCommands);
@@ -315,6 +386,20 @@ public class PrinterManager {
 
         new Thread(() -> {
             try {
+                // 檢查連線狀態
+                if (currentStatus != ConnectionStatus.CONNECTED) {
+                    notifyPrintResult(false, "列印機未連線，請先連線列印機");
+                    return;
+                }
+                
+                // 再次驗證連線是否有效
+                if (!verifyTSCConnection()) {
+                    notifyPrintResult(false, "列印機連線已斷開，請重新連線");
+                    // 更新連線狀態
+                    notifyConnectionStatus(ConnectionStatus.DISCONNECTED, "連線已斷開");
+                    return;
+                }
+                
                 // 生成TSC列印指令
                 String tscCommands = generateTSCCommands(printData);
                 Log.d(TAG, "Generated TSC commands: " + tscCommands);
@@ -358,6 +443,20 @@ public class PrinterManager {
         return connectedDevice;
     }
     
+    /**
+     * 獲取已保存的藍芽設備MAC地址列表
+     */
+    public Set<String> getSavedBluetoothDevices() {
+        return bluetoothPreferences.getConnectedDevices();
+    }
+    
+    /**
+     * 獲取最後一次連線的設備MAC地址
+     */
+    public String getLastConnectedDeviceMac() {
+        return bluetoothPreferences.getLastConnectedDevice();
+    }
+    
     private void notifyConnectionStatus(ConnectionStatus status, String message) {
         currentStatus = status;
         if (callback != null) {
@@ -369,6 +468,46 @@ public class PrinterManager {
         if (callback != null) {
             callback.onPrintResult(success, message);
         }
+    }
+    
+    /**
+     * 驗證TSC連線是否真正建立
+     * 通過發送簡單的狀態查詢指令來測試連線
+     */
+    private boolean verifyTSCConnection() {
+        try {
+            switch (currentPrinterType) {
+                case BLUETOOTH:
+                    if (tscBluetooth != null) {
+                        // 發送簡單的狀態查詢指令
+                        tscBluetooth.sendcommand("~!T\r\n"); // TSC狀態查詢指令
+                        
+                        // 等待一小段時間讓指令處理
+                        Thread.sleep(500);
+                        
+                        // 如果沒有拋出異常，認為連線成功
+                        return true;
+                    }
+                    break;
+                case WIFI:
+                    if (tscWifi != null) {
+                        // 發送簡單的狀態查詢指令
+                        tscWifi.sendcommand("~!T\r\n"); // TSC狀態查詢指令
+                        
+                        // 等待一小段時間讓指令處理
+                        Thread.sleep(500);
+                        
+                        // 如果沒有拋出異常，認為連線成功
+                        return true;
+                    }
+                    break;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Connection verification failed", e);
+            return false;
+        }
+        
+        return false;
     }
     
     /**
@@ -458,26 +597,41 @@ public class PrinterManager {
         
         String[] commandLines = commands.split("\r\n");
         
-        if (tscInstance instanceof TSCActivity) {
-            TSCActivity tsc = (TSCActivity) tscInstance;
-            for (String command : commandLines) {
-                if (!command.trim().isEmpty()) {
-                    Log.d(TAG, "Sending TSC BT command: " + command);
-                    tsc.sendcommand(command + "\r\n");
+        try {
+            if (tscInstance instanceof TSCActivity) {
+                TSCActivity tsc = (TSCActivity) tscInstance;
+                for (String command : commandLines) {
+                    if (!command.trim().isEmpty()) {
+                        Log.d(TAG, "Sending TSC BT command: " + command);
+                        tsc.sendcommand(command + "\r\n");
+                        
+                        // 在每個指令之間添加小延遲，避免指令發送過快
+                        Thread.sleep(50);
+                    }
                 }
-            }
-        } else if (tscInstance instanceof TscWifiActivity) {
-            TscWifiActivity tsc = (TscWifiActivity) tscInstance;
-            for (String command : commandLines) {
-                if (!command.trim().isEmpty()) {
-                    Log.d(TAG, "Sending TSC WiFi command: " + command);
-                    tsc.sendcommand(command + "\r\n");
+            } else if (tscInstance instanceof TscWifiActivity) {
+                TscWifiActivity tsc = (TscWifiActivity) tscInstance;
+                for (String command : commandLines) {
+                    if (!command.trim().isEmpty()) {
+                        Log.d(TAG, "Sending TSC WiFi command: " + command);
+                        tsc.sendcommand(command + "\r\n");
+                        
+                        // 在每個指令之間添加小延遲，避免指令發送過快
+                        Thread.sleep(50);
+                    }
                 }
+            } else {
+                throw new IllegalArgumentException("Unknown TSC instance type");
             }
-        } else {
-            throw new IllegalArgumentException("Unknown TSC instance type");
+            
+            Log.d(TAG, "All TSC commands sent successfully");
+            
+        } catch (NullPointerException e) {
+            Log.e(TAG, "NullPointerException in sendTSCCommands - connection may be lost", e);
+            throw new Exception("列印機連線已斷開，請重新連線", e);
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending TSC commands", e);
+            throw new Exception("發送列印指令失敗: " + e.getMessage(), e);
         }
-        
-        Log.d(TAG, "All TSC commands sent successfully");
     }
 }

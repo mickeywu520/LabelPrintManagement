@@ -11,6 +11,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -21,6 +22,7 @@ import com.android.labelprintmanagement.model.SmallPackageLabelData;
 import com.android.labelprintmanagement.printer.PrinterManager;
 import com.android.labelprintmanagement.printer.PrinterSelectionDialog;
 import com.android.labelprintmanagement.printer.SmallPackagePrintData;
+import com.android.labelprintmanagement.printer.BluetoothConnectionDialog;
 import com.android.labelprintmanagement.utils.QRCodeParser;
 import com.android.labelprintmanagement.utils.BarcodeImageGenerator;
 import com.google.android.material.card.MaterialCardView;
@@ -51,6 +53,7 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
     private SmallPackageLabelData labelData;
     private PrinterManager printerManager;
     private PrinterSelectionDialog printerSelectionDialog;
+    private BluetoothConnectionDialog bluetoothConnectionDialog;
     private boolean isPrinterConnected = false;
 
     // Broadcast Receiver for PDA barcode scanning
@@ -64,7 +67,15 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
                     int symbology = bundle.getInt("symbology");
 
                     Log.d(TAG, "Received barcode: " + barcodedata + ", symbology: " + symbology);
-                    handleBarcodeScanned(barcodedata);
+                    
+                    // 根據symbology類型處理掃描數據
+                    if (symbology == 28) {
+                        // QR Code - 處理QR碼解析
+                        handleBarcodeScanned(barcodedata);
+                    } else {
+                        // 其他類型 - 插入到當前光標位置
+                        insertTextAtCursor(barcodedata);
+                    }
                 }
             }
         }
@@ -113,6 +124,22 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         printerManager = new PrinterManager(this);
         printerManager.setCallback(this);
         printerSelectionDialog = new PrinterSelectionDialog(this, printerManager);
+        bluetoothConnectionDialog = new BluetoothConnectionDialog(this, printerManager);
+        
+        // 設置藍芽連線回調
+        bluetoothConnectionDialog.setCallback(new BluetoothConnectionDialog.BluetoothConnectionCallback() {
+            @Override
+            public void onMacAddressSelected(String macAddress) {
+                // 使用選擇的MAC地址連線
+                printerManager.connectToBluetoothPrinter(macAddress);
+            }
+            
+            @Override
+            public void onCancel() {
+                // 用戶取消連線
+                showToast("已取消藍芽連線");
+            }
+        });
     }
 
     private void initializeUI() {
@@ -255,11 +282,11 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
             return;
         }
 
-        // 如果已經連線，顯示狀態；否則顯示列印機選擇對話框
+        // 如果已經連線，顯示狀態；否則顯示藍芽連線對話框
         if (isPrinterConnected) {
             showToast("列印機已連線");
         } else {
-            printerSelectionDialog.showPrinterTypeSelection();
+            bluetoothConnectionDialog.showBluetoothConnectionDialog();
         }
     }
 
@@ -433,6 +460,54 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
 
     private void showToast(String message) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+    
+    /**
+     * 將掃描的文本插入到當前有焦點的輸入框的光標位置
+     */
+    private void insertTextAtCursor(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return;
+        }
+        
+        // 首先檢查是否有Dialog中的掃描數據接收器
+        if (BluetoothConnectionDialog.hasScanDataReceiver()) {
+            BluetoothConnectionDialog.receiveScanData(text);
+            Log.d(TAG, "Sent scan data to dialog: " + text);
+            showToast("已插入掃描內容到對話框");
+            return;
+        }
+        
+        // 獲取當前有焦點的View
+        View currentFocus = getCurrentFocus();
+        
+        if (currentFocus instanceof EditText) {
+            EditText editText = (EditText) currentFocus;
+            
+            // 獲取當前光標位置
+            int cursorPosition = editText.getSelectionStart();
+            
+            // 獲取當前文本
+            String currentText = editText.getText().toString();
+            
+            // 在光標位置插入新文本
+            String newText = currentText.substring(0, cursorPosition) + 
+                           text + 
+                           currentText.substring(cursorPosition);
+            
+            // 設置新文本
+            editText.setText(newText);
+            
+            // 將光標移動到插入文本的末尾
+            editText.setSelection(cursorPosition + text.length());
+            
+            Log.d(TAG, "Inserted text '" + text + "' at cursor position " + cursorPosition);
+            showToast("已插入掃描內容");
+        } else {
+            // 如果沒有輸入框有焦點，顯示提示
+            showToast("請先點擊要輸入的欄位");
+            Log.d(TAG, "No EditText has focus, cannot insert text: " + text);
+        }
     }
 
     /**
