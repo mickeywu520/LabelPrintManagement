@@ -168,6 +168,7 @@ public class PrintData {
         ESC_POS,    // ESC/POS 格式 (熱敏列印機常用)
         ZPL,        // ZPL 格式 (Zebra 列印機)
         CPCL,       // CPCL 格式 (移動列印機)
+        TSC,        // TSC 格式 (TSC 列印機)
         GENERIC     // 通用格式
     }
 }

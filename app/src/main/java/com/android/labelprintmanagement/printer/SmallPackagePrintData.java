@@ -205,8 +205,161 @@ public class SmallPackagePrintData {
     }
     
     /**
+     * 生成TSC格式的列印指令 (90mm x 50mm標籤)
+     * 基於TSC SDK範例程式碼整合
+     */
+    public String generateTSCCommands() {
+        if (!isValid()) {
+            return "";
+        }
+        
+        StringBuilder cmd = new StringBuilder();
+        
+        // TSC 基本設定指令
+        cmd.append("SIZE 90 mm, 50 mm\r\n");  // 調整為90x50mm
+        cmd.append("SPEED 4\r\n");
+        cmd.append("DENSITY 12\r\n");
+        cmd.append("CODEPAGE UTF-8\r\n");
+        cmd.append("SET TEAR ON\r\n");
+        cmd.append("SET COUNTER @1 1\r\n");
+        cmd.append("@1 = \"0001\"\r\n");
+        cmd.append("CLS\r\n");  // 清除緩衝區
+        
+        // 標籤內容 - 針對90x50mm佈局調整位置
+        
+        // 標題
+        cmd.append("TEXT 50,30,\"ARIAL.TTF\",0,1,1,\"小包裝標籤\"\r\n");
+        
+        // 料號區域
+        cmd.append("TEXT 50,70,\"ARIAL.TTF\",0,1,1,\"P/N: ").append(labelData.getPartNumber()).append("\"\r\n");
+        
+        // 料號條碼 (Code 128)
+        cmd.append("BARCODE 50,100,\"128\",60,1,0,2,2,\"").append(labelData.getPartNumber()).append("\"\r\n");
+        
+        // 產品名稱 (處理長文字)
+        String productName = labelData.getProductName();
+        if (productName.length() > 30) {
+            // 如果產品名稱太長，截取前30個字符
+            productName = productName.substring(0, 30) + "...";
+        }
+        cmd.append("TEXT 50,190,\"ARIAL.TTF\",0,1,1,\"").append(productName).append("\"\r\n");
+        
+        // 數量區域 (左下)
+        cmd.append("TEXT 50,230,\"ARIAL.TTF\",0,1,1,\"QTY: ").append(labelData.getFormattedQuantity()).append("\"\r\n");
+        
+        // 數量條碼
+        cmd.append("BARCODE 50,260,\"128\",40,1,0,2,2,\"").append(labelData.getQuantity()).append("\"\r\n");
+        
+        // D/C Code區域 (右下)
+        cmd.append("TEXT 400,230,\"ARIAL.TTF\",0,1,1,\"D/C: ").append(labelData.getDcCode()).append("\"\r\n");
+        
+        // D/C條碼
+        cmd.append("BARCODE 400,260,\"128\",40,1,0,2,2,\"").append(labelData.getDcCode()).append("\"\r\n");
+        
+        // 計數器編號 (右上角)
+        cmd.append("TEXT 500,70,\"ARIAL.TTF\",0,1,1,\"No: \"\r\n");
+        cmd.append("TEXT 540,70,\"ARIAL.TTF\",0,1,1,").append("@1").append("\r\n");
+        
+        // 列印指令
+        cmd.append("PRINT 1,1\r\n");
+        
+        return cmd.toString();
+    }
+    
+    /**
+     * 執行TSC列印 (需要傳入TSC SDK實例和藍牙地址)
+     * 這個方法包含完整的TSC SDK列印流程
+     */
+    public boolean executeTSCPrint(Object tscDll, String bluetoothAddress) {
+        if (!isValid()) {
+            return false;
+        }
+        
+        try {
+            // 使用反射調用TSC SDK方法，避免直接依賴
+            Class<?> tscClass = tscDll.getClass();
+            
+            // 開啟藍牙連線
+            tscClass.getMethod("openport", String.class).invoke(tscDll, bluetoothAddress);
+            
+            // 發送設定指令
+            tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "SIZE 90 mm, 50 mm\r\n");
+            tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "SPEED 4\r\n");
+            tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "DENSITY 12\r\n");
+            tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "CODEPAGE UTF-8\r\n");
+            tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "SET TEAR ON\r\n");
+            tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "SET COUNTER @1 1\r\n");
+            tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "@1 = \"0001\"\r\n");
+            
+            // 清除緩衝區
+            tscClass.getMethod("clearbuffer").invoke(tscDll);
+            
+            // 發送標籤內容指令
+            sendTSCLabelContent(tscDll, tscClass);
+            
+            // 執行列印
+            tscClass.getMethod("printlabel", int.class, int.class).invoke(tscDll, 1, 1);
+            
+            // 關閉連線
+            tscClass.getMethod("closeport", int.class).invoke(tscDll, 5000);
+            
+            return true;
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * 發送TSC標籤內容指令
+     */
+    private void sendTSCLabelContent(Object tscDll, Class<?> tscClass) throws Exception {
+        // 標題
+        tscClass.getMethod("sendcommand", String.class).invoke(tscDll, 
+            "TEXT 50,30,\"ARIAL.TTF\",0,1,1,\"小包裝標籤\"\r\n");
+        
+        // 料號
+        tscClass.getMethod("sendcommand", String.class).invoke(tscDll, 
+            "TEXT 50,70,\"ARIAL.TTF\",0,1,1,\"P/N: " + labelData.getPartNumber() + "\"\r\n");
+        
+        // 料號條碼
+        tscClass.getMethod("barcode", int.class, int.class, String.class, int.class, int.class, int.class, int.class, int.class, String.class)
+            .invoke(tscDll, 50, 100, "128", 60, 1, 0, 2, 2, labelData.getPartNumber());
+        
+        // 產品名稱
+        String productName = labelData.getProductName();
+        if (productName.length() > 30) {
+            productName = productName.substring(0, 30) + "...";
+        }
+        tscClass.getMethod("sendcommand", String.class).invoke(tscDll, 
+            "TEXT 50,190,\"ARIAL.TTF\",0,1,1,\"" + productName + "\"\r\n");
+        
+        // 數量
+        tscClass.getMethod("sendcommand", String.class).invoke(tscDll, 
+            "TEXT 50,230,\"ARIAL.TTF\",0,1,1,\"QTY: " + labelData.getFormattedQuantity() + "\"\r\n");
+        
+        // 數量條碼
+        tscClass.getMethod("barcode", int.class, int.class, String.class, int.class, int.class, int.class, int.class, int.class, String.class)
+            .invoke(tscDll, 50, 260, "128", 40, 1, 0, 2, 2, labelData.getQuantity());
+        
+        // D/C Code
+        tscClass.getMethod("sendcommand", String.class).invoke(tscDll, 
+            "TEXT 400,230,\"ARIAL.TTF\",0,1,1,\"D/C: " + labelData.getDcCode() + "\"\r\n");
+        
+        // D/C條碼
+        tscClass.getMethod("barcode", int.class, int.class, String.class, int.class, int.class, int.class, int.class, int.class, String.class)
+            .invoke(tscDll, 400, 260, "128", 40, 1, 0, 2, 2, labelData.getDcCode());
+        
+        // 計數器
+        tscClass.getMethod("sendcommand", String.class).invoke(tscDll, 
+            "TEXT 500,70,\"ARIAL.TTF\",0,1,1,\"No: \"\r\n");
+        tscClass.getMethod("sendcommand", String.class).invoke(tscDll, 
+            "TEXT 540,70,\"ARIAL.TTF\",0,1,1,@1\r\n");
+    }
+
+    /**
      * 根據指定格式生成列印指令
-     * TODO: 等待 TSC SDK 整合後實現
      */
     public String generatePrintCommand(PrintData.PrinterCommandFormat format) {
         switch (format) {
@@ -216,6 +369,8 @@ public class SmallPackagePrintData {
                 return generateESCPOSCommand();
             case CPCL:
                 return generateCPCLCommand();
+            case TSC:
+                return generateTSCCommands();
             default:
                 return generateZPLCommand();
         }
