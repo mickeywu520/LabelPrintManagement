@@ -140,6 +140,15 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
                 showToast("已取消藍芽連線");
             }
         });
+        
+        // 設定預設的TSC RE310印表機MAC地址
+        String defaultPrinterMac = "00:80:A3:71:EA:61";
+        // 如果沒有已保存的設備，則使用預設MAC地址
+        if (printerManager.getSavedBluetoothDevices().isEmpty() && 
+            printerManager.getLastConnectedDeviceMac() == null) {
+            // 這裡可以選擇自動連線到預設印表機，或者在UI中顯示預設地址
+            // 為了用戶體驗，我們選擇在UI中顯示預設地址，但不自動連線
+        }
     }
 
     private void initializeUI() {

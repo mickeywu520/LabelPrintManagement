@@ -5,7 +5,7 @@ import com.android.labelprintmanagement.utils.BarcodeGenerator;
 
 /**
  * 小包裝標籤列印數據類
- * 專門處理90x50mm小包裝標籤的列印指令生成
+ * 專門處理75x50mm小包裝標籤的列印指令生成
  */
 public class SmallPackagePrintData {
     
@@ -23,8 +23,8 @@ public class SmallPackagePrintData {
     }
     
     /**
-     * 生成ZPL格式的90x50mm標籤列印指令
-     * 標籤尺寸: 90mm x 50mm (約354 x 197 dots at 203 DPI)
+     * 生成ZPL格式的75x50mm標籤列印指令
+     * 標籤尺寸: 75mm x 50mm (約295 x 197 dots at 203 DPI)
      */
     public String generateZPLCommand() {
         if (!isValid()) {
@@ -36,9 +36,9 @@ public class SmallPackagePrintData {
         // 開始標籤格式
         cmd.append("^XA\n");
         
-        // 設定標籤尺寸 (90mm x 50mm)
+        // 設定標籤尺寸 (75mm x 50mm)
         cmd.append("^LL197\n");  // 標籤長度 197 dots (50mm)
-        cmd.append("^PW354\n");  // 標籤寬度 354 dots (90mm)
+        cmd.append("^PW295\n");  // 標籤寬度 295 dots (75mm)
         
         // 設定列印方向和密度
         cmd.append("^PR4\n");    // 列印速度
@@ -175,7 +175,7 @@ public class SmallPackagePrintData {
         StringBuilder cmd = new StringBuilder();
         
         // CPCL標頭
-        cmd.append("! 0 200 200 197 1\n"); // 90x50mm at 203 DPI
+        cmd.append("! 0 200 200 197 1\n"); // 75x50mm at 203 DPI
         
         // 料號文字
         cmd.append("TEXT 4 0 10 10 料號: ").append(labelData.getPartNumber()).append("\n");
@@ -205,7 +205,7 @@ public class SmallPackagePrintData {
     }
     
     /**
-     * 生成TSC格式的列印指令 (90mm x 50mm標籤)
+     * 生成TSC格式的列印指令 (75mm x 50mm標籤)
      * 基於TSC SDK範例程式碼整合
      */
     public String generateTSCCommands() {
@@ -216,7 +216,7 @@ public class SmallPackagePrintData {
         StringBuilder cmd = new StringBuilder();
         
         // TSC 基本設定指令
-        cmd.append("SIZE 90 mm, 50 mm\r\n");  // 調整為90x50mm
+        cmd.append("SIZE 75 mm, 50 mm\r\n");  // 調整為75x50mm
         cmd.append("SPEED 4\r\n");
         cmd.append("DENSITY 12\r\n");
         cmd.append("CODEPAGE UTF-8\r\n");
@@ -225,7 +225,7 @@ public class SmallPackagePrintData {
         cmd.append("@1 = \"0001\"\r\n");
         cmd.append("CLS\r\n");  // 清除緩衝區
         
-        // 標籤內容 - 針對90x50mm佈局調整位置
+        // 標籤內容 - 針對75x50mm佈局調整位置
         
         // 標題
         cmd.append("TEXT 50,30,\"ARIAL.TTF\",0,1,1,\"小包裝標籤\"\r\n");
@@ -283,7 +283,7 @@ public class SmallPackagePrintData {
             tscClass.getMethod("openport", String.class).invoke(tscDll, bluetoothAddress);
             
             // 發送設定指令
-            tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "SIZE 90 mm, 50 mm\r\n");
+            tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "SIZE 75 mm, 50 mm\r\n");
             tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "SPEED 4\r\n");
             tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "DENSITY 12\r\n");
             tscClass.getMethod("sendcommand", String.class).invoke(tscDll, "CODEPAGE UTF-8\r\n");

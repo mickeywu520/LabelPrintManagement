@@ -138,7 +138,7 @@ public class BluetoothConnectionDialog {
         TextInputEditText etMacAddress = dialogView.findViewById(R.id.etMacAddress);
         
         // 設定預設提示
-        etMacAddress.setHint("00:19:0E:A0:04:E1");
+        etMacAddress.setHint("00:80:A3:71:EA:61");
         
         // 添加自動格式化MAC地址的TextWatcher
         MacAddressTextWatcher textWatcher = new MacAddressTextWatcher(etMacAddress);

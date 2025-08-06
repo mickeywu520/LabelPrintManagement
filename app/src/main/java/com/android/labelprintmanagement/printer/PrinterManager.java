@@ -511,7 +511,7 @@ public class PrinterManager {
     }
     
     /**
-     * 生成TSC列印指令 (針對90x50mm小包裝標籤)
+     * 生成TSC列印指令 (針對75x50mm小包裝標籤)
      */
     private String generateTSCCommands(SmallPackagePrintData printData) {
         if (printData == null || !printData.isValid()) {
@@ -520,8 +520,8 @@ public class PrinterManager {
         
         StringBuilder commands = new StringBuilder();
         
-        // 基本設定 - 90x50mm標籤
-        commands.append("SIZE 90 mm, 50 mm\r\n");
+        // 基本設定 - 75x50mm標籤
+        commands.append("SIZE 75 mm, 50 mm\r\n");
         commands.append("SPEED 4\r\n");
         commands.append("DENSITY 12\r\n");
         commands.append("CODEPAGE UTF-8\r\n");
