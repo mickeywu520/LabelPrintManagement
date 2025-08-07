@@ -538,31 +538,38 @@ public class PrinterManager {
         String productName = extractValue(dataStr, "productName");
         String quantity = extractValue(dataStr, "quantity");
         String dcCode = extractValue(dataStr, "dcCode");
-        
+
+        /* new param test, mickey */
         // 料號文字 (頂部左側)
-        commands.append("TEXT 20,30,\"3\",0,1,1,\"料號: ").append(partNumber).append("\"\r\n");
-        
+        // TEXT x,y,"font",rotation,x-multiplication,y-multiplication,"content"
+        commands.append("TEXT 20,30,\"3\",0,1,1,\"料號:").append(partNumber).append("\"\r\n");
+
         // 料號條碼 (Code 128)
-        commands.append("BARCODE 20,60,\"128\",60,1,0,2,2,\"").append(partNumber).append("\"\r\n");
-        
+        // BARCODE x,y,"code type",height,human_readable,rotation,narrow,wide,"content"
+        // human_readable (第五個參數): 0 = 不顯示文字, 1 = 顯示文字
+        // rotation (第六個參數): 0 = 0度, 1 = 90度, 2 = 180度, 3 = 270度
+        // narrow (第七個參數): 窄條寬度
+        // wide (第八個參數): 寬條寬度
+        commands.append("BARCODE 80,60,\"128\",60,0,0,2,2,\"").append(partNumber).append("\"\r\n");
+
         // 品名文字 (中間)
-        commands.append("TEXT 20,140,\"3\",0,1,1,\"品名: ").append(productName).append("\"\r\n");
-        
+        commands.append("TEXT 20,200,\"3\",0,1,1,\"品名:").append(productName).append("\"\r\n");
+
         // 數量文字 (底部左側)
-        commands.append("TEXT 20,180,\"3\",0,1,1,\"數量: ").append(quantity).append(" PCS\"\r\n");
-        
-        // 數量條碼 (Code 39)
-        commands.append("BARCODE 20,210,\"39\",40,1,0,2,2,\"").append(quantity).append("\"\r\n");
-        
+        commands.append("TEXT 20,300,\"3\",0,1,1,\"數量:").append(quantity).append(" PCS\"\r\n");
+
+        // 數量條碼 (Code 128)
+        commands.append("BARCODE 80,330,\"128\",40,0,0,2,2,\"").append(quantity).append("\"\r\n");
+
         // D/C文字 (底部右側)
-        commands.append("TEXT 300,180,\"3\",0,1,1,\"D/C: ").append(dcCode).append("\"\r\n");
-        
-        // D/C條碼 (Code 39)
-        commands.append("BARCODE 300,210,\"39\",40,1,0,2,2,\"").append(dcCode).append("\"\r\n");
-        
+        commands.append("TEXT 300,300,\"3\",0,1,1,\"D/C:").append(dcCode).append("\"\r\n");
+
+        // D/C條碼 (Code 128)
+        commands.append("BARCODE 360,330,\"128\",40,0,0,2,2,\"").append(dcCode).append("\"\r\n");
+
         // 列印指令
         commands.append("PRINT 1,1\r\n");
-        
+
         return commands.toString();
     }
     
