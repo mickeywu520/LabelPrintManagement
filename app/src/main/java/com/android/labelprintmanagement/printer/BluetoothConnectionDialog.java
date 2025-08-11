@@ -3,6 +3,7 @@ package com.android.labelprintmanagement.printer;
 import android.content.Context;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -90,7 +91,7 @@ public class BluetoothConnectionDialog {
      */
     private void showSavedDevicesDialog(Set<String> savedDevices) {
         List<String> deviceList = new ArrayList<>(savedDevices);
-        
+        Log.w("mickey", "showSavedDevicesDialog!!!!!!!!!!!!!!!!!!!!!!");
         // 將最後連線的設備排在第一位
         String lastConnected = printerManager.getLastConnectedDeviceMac();
         if (lastConnected != null && deviceList.contains(lastConnected)) {
@@ -98,7 +99,7 @@ public class BluetoothConnectionDialog {
             deviceList.add(0, lastConnected);
         }
         
-        SavedDeviceAdapter adapter = new SavedDeviceAdapter(context, deviceList, lastConnected);
+        SavedDeviceAdapter adapter = new SavedDeviceAdapter(context, deviceList, lastConnected, printerManager, BluetoothConnectionDialog.this);
         
         ListView listView = new ListView(context);
         listView.setAdapter(adapter);
@@ -119,11 +120,30 @@ public class BluetoothConnectionDialog {
         
         // 設定列表項目點擊事件
         listView.setOnItemClickListener((parent, view, position, id) -> {
+            Log.w("mickey", "setOnItemClickListener!!!!!!!!!!!!!!!!!!!!!!");
             String selectedMac = deviceList.get(position);
             if (callback != null) {
                 callback.onMacAddressSelected(selectedMac);
             }
-            dialog.dismiss();
+            dialog.dismiss(); // 關閉對話框
+        });
+        
+        // 設定列表項目長按事件
+        listView.setOnItemLongClickListener((parent, view, position, id) -> {
+            String macAddress = deviceList.get(position);
+            new MaterialAlertDialogBuilder(context)
+                .setTitle("刪除設備")
+                .setMessage("確定要刪除設備 " + macAddress + " 的連線信息嗎？")
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setPositiveButton("刪除", (dialogInterface, which) -> {
+                    printerManager.removeSavedBluetoothDevice(macAddress);
+                    deviceList.remove(macAddress);
+                    adapter.notifyDataSetChanged();
+                    Toast.makeText(context, "已刪除設備 " + macAddress, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+            return true;
         });
         
         dialog.show();
@@ -260,10 +280,14 @@ public class BluetoothConnectionDialog {
     private static class SavedDeviceAdapter extends ArrayAdapter<String> {
         
         private String lastConnectedDevice;
+        private PrinterManager printerManager;
+        private BluetoothConnectionDialog dialog;
         
-        public SavedDeviceAdapter(@NonNull Context context, @NonNull List<String> devices, String lastConnectedDevice) {
+        public SavedDeviceAdapter(@NonNull Context context, @NonNull List<String> devices, String lastConnectedDevice, PrinterManager printerManager, BluetoothConnectionDialog dialog) {
             super(context, 0, devices);
             this.lastConnectedDevice = lastConnectedDevice;
+            this.printerManager = printerManager;
+            this.dialog = dialog;
         }
         
         @NonNull
@@ -288,6 +312,8 @@ public class BluetoothConnectionDialog {
                     text2.setText("已保存的設備");
                     text2.setTextColor(getContext().getResources().getColor(android.R.color.darker_gray));
                 }
+                
+                // 移除了 convertView 的長按監聽器，改為在 ListView 上統一處理
             }
             
             return convertView;

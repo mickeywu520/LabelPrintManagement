@@ -467,6 +467,13 @@ public class PrinterManager {
         return bluetoothPreferences.getLastConnectedDevice();
     }
     
+    /**
+     * 移除已保存的藍芽設備
+     */
+    public void removeSavedBluetoothDevice(String macAddress) {
+        bluetoothPreferences.removeConnectedDevice(macAddress);
+    }
+    
     private void notifyConnectionStatus(ConnectionStatus status, String message) {
         currentStatus = status;
         if (callback != null) {
