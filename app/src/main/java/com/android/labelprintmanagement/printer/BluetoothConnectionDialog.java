@@ -324,39 +324,33 @@ public class BluetoothConnectionDialog {
             
             isFormatting = true;
             
-            String input = s.toString().replaceAll("[^0-9A-Fa-f]", ""); // 移除所有非十六進制字符
-            
-            if (input.length() > 12) {
-                input = input.substring(0, 12); // 限制最多12個字符
-            }
-            
-            StringBuilder formatted = new StringBuilder();
-            for (int i = 0; i < input.length(); i++) {
-                if (i > 0 && i % 2 == 0) {
-                    formatted.append(":");
-                }
-                formatted.append(input.charAt(i));
-            }
-            
-            String formattedText = formatted.toString().toUpperCase();
-            
             try {
+                String input = s.toString().replaceAll("[^0-9A-Fa-f]", ""); // 移除所有非十六進制字符
+                
+                if (input.length() > 12) {
+                    input = input.substring(0, 12); // 限制最多12個字符
+                }
+                
+                StringBuilder formatted = new StringBuilder();
+                for (int i = 0; i < input.length(); i++) {
+                    if (i > 0 && i % 2 == 0) {
+                        formatted.append(":");
+                    }
+                    formatted.append(input.charAt(i));
+                }
+                
+                String formattedText = formatted.toString().toUpperCase();
+                
                 // 保存當前光標位置
                 int cursorPosition = Math.max(0, editText.getSelectionStart());
+                
+                // 計算格式化後的光標位置
+                int newCursorPosition = calculateNewCursorPosition(input, cursorPosition);
                 
                 // 設置格式化後的文本
                 editText.setText(formattedText);
                 
-                // 調整光標位置，確保不超出文本長度
-                int newCursorPosition = Math.min(cursorPosition, formattedText.length());
-                
-                // 如果光標在冒號位置，移動到下一個位置
-                if (newCursorPosition < formattedText.length() && 
-                    formattedText.charAt(newCursorPosition) == ':') {
-                    newCursorPosition++;
-                }
-                
-                // 確保最終位置在有效範圍內
+                // 確保光標位置在有效範圍內
                 newCursorPosition = Math.max(0, Math.min(newCursorPosition, formattedText.length()));
                 
                 // 安全地設置光標位置
@@ -365,17 +359,29 @@ public class BluetoothConnectionDialog {
                 }
                 
             } catch (Exception e) {
-                // 如果設置光標位置失敗，將光標移到末尾
-                android.util.Log.e("MacAddressTextWatcher", "Error setting cursor position", e);
-                try {
-                    editText.setSelection(editText.getText().length());
-                } catch (Exception ex) {
-                    // 如果連設置到末尾都失敗，就不設置光標位置
-                    android.util.Log.e("MacAddressTextWatcher", "Failed to set cursor to end", ex);
-                }
+                // 如果出現任何異常，記錄錯誤但不中斷用戶輸入
+                android.util.Log.e("MacAddressTextWatcher", "Error formatting MAC address", e);
             }
             
             isFormatting = false;
+        }
+        
+        /**
+         * 計算格式化後的光標位置
+         * @param input 純十六進制字符輸入
+         * @param oldPosition 原始光標位置
+         * @return 格式化後的光標位置
+         */
+        private int calculateNewCursorPosition(String input, int oldPosition) {
+            // 限制原始光標位置在有效範圍內
+            oldPosition = Math.max(0, Math.min(oldPosition, input.length()));
+            
+            // 計算光標前有多少對字符
+            int pairsBeforeCursor = oldPosition / 2;
+            
+            // 計算格式化後的光標位置
+            // 每對字符之間會添加一個冒號，所以光標位置要加上冒號的數量
+            return oldPosition + pairsBeforeCursor;
         }
     }
     
