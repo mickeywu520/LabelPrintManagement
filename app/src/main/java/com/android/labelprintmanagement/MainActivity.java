@@ -280,7 +280,22 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         }
 
         if (!printerManager.isBluetoothEnabled()) {
-            showToast("請啟用藍芽功能");
+            // 顯示對話框詢問用戶是否啟動藍牙
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle("啟用藍牙")
+                    .setMessage("藍牙目前未啟用，是否要啟用藍牙？")
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setPositiveButton("啟用", (dialog, which) -> {
+                        // 請求啟用藍牙
+                        Intent enableBtIntent = new Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                        startActivity(enableBtIntent);
+                    })
+                    .setNegativeButton("取消", (dialog, which) -> {
+                        // 用戶取消，顯示提示訊息
+                        showToast("請手動啟用藍牙功能");
+                    })
+                    .setCancelable(false) // 防止點擊對話框外部關閉
+                    .show();
             updateBluetoothIcon(false);
             return;
         }
