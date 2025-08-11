@@ -4,10 +4,20 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.util.Log;
 import androidx.core.app.ActivityCompat;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Set;
 
 import com.android.labelprintmanagement.utils.BluetoothPreferences;
@@ -509,7 +519,112 @@ public class PrinterManager {
         
         return false;
     }
-    
+
+    /**
+     * 從 assets 資料夾中載入圖片並轉換為 Bitmap 物件。
+     *
+     * @param context 應用程式的 Context。
+     * @param assetFileName assets 資料夾中圖片的檔案名稱 (例如: "my_image.png")。
+     * @return 轉換成功的 Bitmap 物件，如果發生錯誤則回傳 null。
+     */
+    public Bitmap getBitmapFromAssets(Context context, String assetFileName) {
+        // 儲存結果的 Bitmap 物件
+        Bitmap bitmap = null;
+        InputStream inputStream = null;
+
+        try {
+            // 透過 Context 取得 AssetManager
+            AssetManager assetManager = context.getAssets();
+            // 開啟 assets 中的指定檔案，並取得 InputStream
+            inputStream = assetManager.open(assetFileName);
+
+            Log.w(TAG, "Have bitmap!!!!");
+            // 使用 BitmapFactory 直接從 InputStream 解碼成 Bitmap
+            bitmap = BitmapFactory.decodeStream(inputStream);
+
+        } catch (IOException e) {
+            // 如果找不到檔案或讀取失敗，記錄錯誤
+            Log.e(TAG, "Failed to get bitmap from assets: " + assetFileName, e);
+            e.printStackTrace();
+        } finally {
+            // 確保 InputStream 在使用完畢後被關閉，避免資源洩漏
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        // 回傳轉換後的 Bitmap
+        return bitmap;
+    }
+
+
+    /**
+     * 複製 assets 資料夾中的檔案到快取目錄，並回傳其絕對路徑。
+     *
+     * @param context 應用程式的 Context。
+     * @param assetFileName 要複製的 assets 檔案名稱，例如 "logo.bmp"。
+     * @return 檔案在快取目錄中的絕對路徑，如果失敗則回傳 null。
+     */
+    public String getAssetFilePath(Context context, String assetFileName) {
+        File targetFile = null;
+
+        try {
+            AssetManager assetManager = context.getAssets();
+            // 讀取 assets 資料夾中的檔案
+            InputStream inputStream = assetManager.open(assetFileName);
+
+            // 在應用程式的快取目錄中創建一個臨時檔案
+            File cacheDir = context.getCacheDir();
+            targetFile = new File(cacheDir, assetFileName);
+            FileOutputStream outputStream = new FileOutputStream(targetFile);
+
+            byte[] buffer = new byte[1024];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+
+            inputStream.close();
+            outputStream.flush();
+            outputStream.close();
+
+            // 成功複製後，回傳檔案的絕對路徑
+            return targetFile.getAbsolutePath();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            // 如果複製檔案失敗，回傳 null
+            return null;
+        }
+    }
+
+    /**
+     * 輔助方法：將長字串根據字元數分割成多行
+     *
+     * @param text      要分割的原始字串
+     * @param charLimit 每行的字元數限制
+     * @return 包含換行符的處理後字串
+     */
+    public static String wrapText(String text, int charLimit) {
+        StringBuilder sb = new StringBuilder();
+        int currentLength = 0;
+        for (char c : text.toCharArray()) {
+            sb.append(c);
+            currentLength++;
+            // 檢查是否達到字元限制
+            if (currentLength >= charLimit) {
+                // 插入換行符
+                sb.append("\n");
+                currentLength = 0;
+            }
+        }
+        return sb.toString();
+    }
+
     /**
      * 生成TSC列印指令 (針對75x50mm小包裝標籤)
      */
@@ -539,40 +654,32 @@ public class PrinterManager {
         String quantity = extractValue(dataStr, "quantity");
         String dcCode = extractValue(dataStr, "dcCode");
 
-        /* new param test, mickey */
         // 料號文字 (頂部左側)
-        // TEXT x,y,"font",rotation,x-multiplication,y-multiplication,"content"
-        commands.append("TEXT 20,30,\"3\",0,1,1,\"料號:").append(partNumber).append("\"\r\n");
-
+        commands.append("TEXT 20,30,\"MEIRYO.TTC\",0,12,12,0,\"料號:").append(partNumber).append("\"\r\n");
         // 料號條碼 (Code 128)
-        // BARCODE x,y,"code type",height,human_readable,rotation,narrow,wide,"content"
-        // human_readable (第五個參數): 0 = 不顯示文字, 1 = 顯示文字
-        // rotation (第六個參數): 0 = 0度, 1 = 90度, 2 = 180度, 3 = 270度
-        // narrow (第七個參數): 窄條寬度
-        // wide (第八個參數): 寬條寬度
-        commands.append("BARCODE 80,60,\"128\",60,0,0,2,2,\"").append(partNumber).append("\"\r\n");
+        commands.append("BARCODE 90,60,\"128\",60,0,0,2,2,\"").append(partNumber).append("\"\r\n");
 
         // 品名文字 (中間)
-        commands.append("TEXT 20,200,\"3\",0,1,1,\"品名:").append(productName).append("\"\r\n");
+        String fullProductNameText = "品名: " + productName;
+        String wrappedProductNameText = wrapText(fullProductNameText, 25);
+        // 調整 BLOCK 字體，並增加區塊高度
+        commands.append("BLOCK 20,180,800,250,\"MEIRYO.TTC\",0,12,12,0,0,\"" + wrappedProductNameText + "\"\r\n");
 
         // 數量文字 (底部左側)
-        commands.append("TEXT 20,300,\"3\",0,1,1,\"數量:").append(quantity).append(" PCS\"\r\n");
-
+        commands.append("TEXT 20,300,\"MEIRYO.TTC\",0,12,12,0,\"數量:").append(quantity).append(" PCS\"\r\n");
         // 數量條碼 (Code 128)
-        commands.append("BARCODE 80,330,\"128\",40,0,0,2,2,\"").append(quantity).append("\"\r\n");
+        commands.append("BARCODE 90,330,\"128\",40,0,0,2,2,\"").append(quantity).append("\"\r\n");
 
         // D/C文字 (底部右側)
-        commands.append("TEXT 300,300,\"3\",0,1,1,\"D/C:").append(dcCode).append("\"\r\n");
-
+        commands.append("TEXT 300,300,\"MEIRYO.TTC\",0,12,12,0,\"D/C:").append(dcCode).append("\"\r\n");
         // D/C條碼 (Code 128)
         commands.append("BARCODE 360,330,\"128\",40,0,0,2,2,\"").append(dcCode).append("\"\r\n");
 
         // 列印指令
         commands.append("PRINT 1,1\r\n");
-
         return commands.toString();
     }
-    
+
     /**
      * 從toString()字符串中提取值的輔助方法
      * 臨時方案，建議後續優化
