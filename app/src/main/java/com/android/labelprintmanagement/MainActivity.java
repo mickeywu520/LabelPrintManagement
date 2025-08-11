@@ -607,7 +607,7 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         runOnUiThread(() -> {
             if (success) {
                 showToast("列印成功: " + message);
-                disconnectPrinterAfterDelay();
+//                disconnectPrinterAfterDelay();
             } else {
                 showToast("列印失敗: " + message);
             }
