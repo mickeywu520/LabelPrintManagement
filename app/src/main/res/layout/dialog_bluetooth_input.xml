@@ -27,9 +27,9 @@
             android:textSize="16sp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:paddingTop="16dp"
-            android:paddingBottom="16dp"
-            android:gravity="center_vertical" />
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:gravity="center_vertical|start" />
 
     </com.google.android.material.textfield.TextInputLayout>
 

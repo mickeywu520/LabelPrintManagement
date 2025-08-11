@@ -233,6 +233,11 @@ public class BluetoothConnectionDialog {
                 })
                 .create();
         
+        // 設置對話框的窗口參數，防止軟鍵盤彈出時輸入框被擠壓
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        }
+        
         dialog.show();
     }
     
