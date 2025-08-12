@@ -238,11 +238,13 @@ public class SmallPackagePrintData {
         
         // 產品名稱 (處理長文字)
         String productName = labelData.getProductName();
-        if (productName.length() > 30) {
-            // 如果產品名稱太長，截取前30個字符
-            productName = productName.substring(0, 30) + "...";
+        if (productName != null && !productName.isEmpty()) {
+            if (productName.length() > 30) {
+                // 如果產品名稱太長，截取前30個字符
+                productName = productName.substring(0, 30) + "...";
+            }
+            cmd.append("TEXT 50,190,\"ARIAL.TTF\",0,1,1,\"").append(productName).append("\"\r\n");
         }
-        cmd.append("TEXT 50,190,\"ARIAL.TTF\",0,1,1,\"").append(productName).append("\"\r\n");
         
         // 數量區域 (左下)
         cmd.append("TEXT 50,230,\"ARIAL.TTF\",0,1,1,\"QTY: ").append(labelData.getFormattedQuantity()).append("\"\r\n");
@@ -251,10 +253,13 @@ public class SmallPackagePrintData {
         cmd.append("BARCODE 50,260,\"128\",40,1,0,2,2,\"").append(labelData.getQuantity()).append("\"\r\n");
         
         // D/C Code區域 (右下)
-        cmd.append("TEXT 400,230,\"ARIAL.TTF\",0,1,1,\"D/C: ").append(labelData.getDcCode()).append("\"\r\n");
-        
-        // D/C條碼
-        cmd.append("BARCODE 400,260,\"128\",40,1,0,2,2,\"").append(labelData.getDcCode()).append("\"\r\n");
+        String dcCode = labelData.getDcCode();
+        if (dcCode != null && !dcCode.isEmpty()) {
+            cmd.append("TEXT 400,230,\"ARIAL.TTF\",0,1,1,\"D/C: ").append(dcCode).append("\"\r\n");
+            
+            // D/C條碼
+            cmd.append("BARCODE 400,260,\"128\",40,1,0,2,2,\"").append(dcCode).append("\"\r\n");
+        }
         
         // 計數器編號 (右上角)
         cmd.append("TEXT 500,70,\"ARIAL.TTF\",0,1,1,\"No: \"\r\n");

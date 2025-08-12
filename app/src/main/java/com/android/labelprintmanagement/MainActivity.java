@@ -333,9 +333,9 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         // 更新數據模型中的所有欄位
         updateDataFromUI();
 
-        // 驗證數據
+        // 驗證數據 (只要料號和數量不為空且有效即可)
         if (!labelData.isValid()) {
-            showToast("數據不完整：" + labelData.getMissingFieldsDescription());
+            showToast("數據不完整：料號和數量為必填欄位");
             return;
         }
 
@@ -361,9 +361,22 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
     private void updatePreviewDisplay() {
         // 更新文字內容
         tvPreviewPartNumber.setText(labelData.getPartNumber());
-        tvPreviewProductName.setText(labelData.getProductName());
+        
+        String productName = labelData.getProductName();
+        if (productName != null && !productName.isEmpty()) {
+            tvPreviewProductName.setText(productName);
+        } else {
+            tvPreviewProductName.setText(""); // 清空文字
+        }
+        
         tvPreviewQuantity.setText(labelData.getFormattedQuantity());
-        tvPreviewDcCode.setText(labelData.getDcCode());
+        
+        String dcCode = labelData.getDcCode();
+        if (dcCode != null && !dcCode.isEmpty()) {
+            tvPreviewDcCode.setText(dcCode);
+        } else {
+            tvPreviewDcCode.setText(""); // 清空文字
+        }
 
         // 生成並顯示條碼圖像
         generateAndDisplayBarcodes();
@@ -375,51 +388,67 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
     private void generateAndDisplayBarcodes() {
         // 在背景線程生成條碼，避免阻塞 UI
         new Thread(() -> {
-            try {
-                // 生成料號條碼
-                Bitmap partNumberBarcode = BarcodeImageGenerator.generatePreviewBarcode(
-                    labelData.getPartNumber(), "partnumber");
-
-                // 生成數量條碼
-                Bitmap quantityBarcode = BarcodeImageGenerator.generatePreviewBarcode(
-                    labelData.getQuantity(), "quantity");
-
-                // 生成 D/C 條碼
-                Bitmap dcBarcode = BarcodeImageGenerator.generatePreviewBarcode(
-                    labelData.getDcCode(), "dc");
-
-                // 在主線程更新 UI
-                runOnUiThread(() -> {
-                    // 設置料號條碼
-                    if (partNumberBarcode != null) {
-                        ivPreviewPartNumberBarcode.setImageBitmap(partNumberBarcode);
-                        ivPreviewPartNumberBarcode.setBackgroundResource(0); // 移除佔位符背景
-                    } else {
-                        Log.w(TAG, "Failed to generate part number barcode");
-                    }
-
-                    // 設置數量條碼
-                    if (quantityBarcode != null) {
-                        ivPreviewQuantityBarcode.setImageBitmap(quantityBarcode);
-                        ivPreviewQuantityBarcode.setBackgroundResource(0); // 移除佔位符背景
-                    } else {
-                        Log.w(TAG, "Failed to generate quantity barcode");
-                    }
-
-                    // 設置 D/C 條碼
-                    if (dcBarcode != null) {
-                        ivPreviewDcBarcode.setImageBitmap(dcBarcode);
-                        ivPreviewDcBarcode.setBackgroundResource(0); // 移除佔位符背景
-                    } else {
-                        Log.w(TAG, "Failed to generate DC barcode");
-                    }
-                });
-
-            } catch (Exception e) {
-                Log.e(TAG, "Error generating barcodes", e);
-                runOnUiThread(() -> showToast("條碼生成失敗"));
-            }
+            // 在主線程更新 UI
+            runOnUiThread(() -> {
+                updateBarcodeDisplay();
+            });
         }).start();
+    }
+    
+    /**
+     * 更新條碼顯示
+     */
+    private void updateBarcodeDisplay() {
+        try {
+            // 獲取當前的標籤數據
+            String partNumber = labelData.getPartNumber();
+            String quantity = labelData.getQuantity();
+            String dcCode = labelData.getDcCode();
+            
+            // 生成料號條碼
+            Bitmap partNumberBarcode = BarcodeImageGenerator.generatePreviewBarcode(
+                partNumber, "partnumber");
+
+            // 生成數量條碼
+            Bitmap quantityBarcode = BarcodeImageGenerator.generatePreviewBarcode(
+                quantity, "quantity");
+
+            // 生成 D/C 條碼
+            Bitmap dcBarcode = null;
+            if (dcCode != null && !dcCode.isEmpty()) {
+                dcBarcode = BarcodeImageGenerator.generatePreviewBarcode(
+                    dcCode, "dc");
+            }
+
+            // 設置料號條碼
+            if (partNumberBarcode != null) {
+                ivPreviewPartNumberBarcode.setImageBitmap(partNumberBarcode);
+                ivPreviewPartNumberBarcode.setBackgroundResource(0); // 移除佔位符背景
+            } else {
+                Log.w(TAG, "Failed to generate part number barcode");
+            }
+
+            // 設置數量條碼
+            if (quantityBarcode != null) {
+                ivPreviewQuantityBarcode.setImageBitmap(quantityBarcode);
+                ivPreviewQuantityBarcode.setBackgroundResource(0); // 移除佔位符背景
+            } else {
+                Log.w(TAG, "Failed to generate quantity barcode");
+            }
+
+            // 設置 D/C 條碼
+            if (dcBarcode != null) {
+                ivPreviewDcBarcode.setImageBitmap(dcBarcode);
+                ivPreviewDcBarcode.setBackgroundResource(0); // 移除佔位符背景
+            } else {
+                // 如果 D/C 為空，重置為佔位符
+                ivPreviewDcBarcode.setImageBitmap(null);
+                ivPreviewDcBarcode.setBackgroundResource(R.drawable.barcode_placeholder);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error generating barcodes", e);
+            showToast("條碼生成失敗");
+        }
     }
 
     private void updateBluetoothIcon(boolean connected) {
@@ -456,10 +485,10 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
             return;
         }
 
-        // 更新並驗證數據
+        // 更新並驗證數據 (只要料號和數量不為空且有效即可)
         updateDataFromUI();
         if (!labelData.isValid()) {
-            showToast("數據不完整：" + labelData.getMissingFieldsDescription());
+            showToast("數據不完整：料號和數量為必填欄位");
             return;
         }
 

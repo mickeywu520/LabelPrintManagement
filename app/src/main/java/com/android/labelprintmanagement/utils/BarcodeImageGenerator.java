@@ -178,6 +178,12 @@ public class BarcodeImageGenerator {
      * @return 預覽條碼圖像
      */
     public static Bitmap generatePreviewBarcode(String content, String type) {
+        // 檢查內容是否為空
+        if (content == null || content.trim().isEmpty()) {
+            Log.w(TAG, "Empty content for " + type + " barcode");
+            return null;
+        }
+        
         if (!isValidCode128Content(content)) {
             Log.w(TAG, "Invalid content for " + type + " barcode: " + content);
             return null;

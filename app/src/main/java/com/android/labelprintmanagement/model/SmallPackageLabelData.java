@@ -53,12 +53,11 @@ public class SmallPackageLabelData {
     
     /**
      * 驗證數據是否完整且有效
+     * 修改為只要料號和數量不為空且有效即可
      */
     public boolean isValid() {
         return partNumber != null && !partNumber.trim().isEmpty() &&
-               productName != null && !productName.trim().isEmpty() &&
                quantity != null && !quantity.trim().isEmpty() &&
-               dcCode != null && !dcCode.trim().isEmpty() &&
                isValidQuantity();
     }
     
