@@ -111,14 +111,7 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         }
     }
 
-    /**
-     * 攔截 Back 鍵事件
-     * 顯示確認對話框詢問用戶是否要離開程式
-     */
-    @Override
-    public void onBackPressed() {
-        showExitConfirmationDialog();
-    }
+    // 移除了舊的 updateQuantityInData 方法
 
     private void initializePrinterManager() {
         printerManager = new PrinterManager(this);
@@ -207,7 +200,7 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         // 監聽數量欄位變化，自動更新預覽
         etQuantity.setOnFocusChangeListener((v, hasFocus) -> {
             if (!hasFocus) {
-                updateQuantityInData();
+                updateDataFromUI();
                 if (cardLabelPreview.getVisibility() == View.VISIBLE) {
                     updatePreviewDisplay();
                 }
@@ -259,8 +252,7 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         etQuantity.setText(labelData.getQuantity());
         etDcCode.setText(labelData.getDcCode());
 
-        // 隱藏預覽卡片（需要用戶點擊預覽按鈕）
-        cardLabelPreview.setVisibility(View.GONE);
+        // 不再隱藏預覽卡片，讓用戶可以隨時預覽
     }
 
     private void updateScanStatus(String message, boolean success) {
@@ -324,8 +316,7 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         etQuantity.setText("");
         etDcCode.setText("");
 
-        // 隱藏卡片
-        cardQRData.setVisibility(View.GONE);
+        // 隱藏預覽卡片，但保持QR數據卡片可見
         cardLabelPreview.setVisibility(View.GONE);
 
         // 重置條碼圖像
@@ -339,8 +330,8 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
     }
 
     private void showPreview() {
-        // 更新數據模型中的數量
-        updateQuantityInData();
+        // 更新數據模型中的所有欄位
+        updateDataFromUI();
 
         // 驗證數據
         if (!labelData.isValid()) {
@@ -355,9 +346,16 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         showToast("預覽已更新");
     }
 
-    private void updateQuantityInData() {
+    private void updateDataFromUI() {
+        String partNumber = etPartNumber.getText().toString().trim();
+        String productName = etProductName.getText().toString().trim();
         String quantity = etQuantity.getText().toString().trim();
+        String dcCode = etDcCode.getText().toString().trim();
+        
+        labelData.setPartNumber(partNumber);
+        labelData.setProductName(productName);
         labelData.setQuantity(quantity);
+        labelData.setDcCode(dcCode);
     }
 
     private void updatePreviewDisplay() {
@@ -459,7 +457,7 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         }
 
         // 更新並驗證數據
-        updateQuantityInData();
+        updateDataFromUI();
         if (!labelData.isValid()) {
             showToast("數據不完整：" + labelData.getMissingFieldsDescription());
             return;

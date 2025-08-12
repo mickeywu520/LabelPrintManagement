@@ -84,7 +84,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:visibility="gone"
+            android:visibility="visible"
             app:cardCornerRadius="8dp"
             app:cardElevation="4dp"
             app:strokeColor="#E5E7EB"
@@ -99,7 +99,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="掃描結果"
+                    android:text="條碼內容"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="@color/black"
@@ -117,7 +117,6 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="料號"
-                        android:enabled="false"
                         android:textSize="16sp"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -133,7 +132,6 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="品名"
-                        android:enabled="false"
                         android:textSize="16sp"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -165,7 +163,6 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="D/C"
-                        android:enabled="false"
                         android:textSize="16sp"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
