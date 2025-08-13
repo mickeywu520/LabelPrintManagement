@@ -93,12 +93,8 @@ public class QRCodeParser {
                 }
             }
             
-            // 驗證解析結果
-            if (qrData.isValid()) {
-                return qrData;
-            } else {
-                return null;
-            }
+            // 不再驗證解析結果，直接返回解析出的數據
+            return qrData;
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -164,12 +160,8 @@ public class QRCodeParser {
                 }
             }
             
-            // 驗證解析結果
-            if (qrData.isValid()) {
-                return qrData;
-            } else {
-                return null;
-            }
+            // 不再驗證解析結果，直接返回解析出的數據
+            return qrData;
             
         } catch (Exception e) {
             e.printStackTrace();

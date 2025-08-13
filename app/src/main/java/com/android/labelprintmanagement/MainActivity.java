@@ -225,7 +225,7 @@ public class MainActivity extends AppCompatActivity implements PrinterManager.Pr
         // 解析QR碼內容
         QRCodeParser.QRData qrData = QRCodeParser.smartParseQRContent(barcodeData);
 
-        if (qrData != null && qrData.isValid()) {
+        if (qrData != null) {
             // 更新數據模型
             labelData = SmallPackageLabelData.fromQRData(qrData);
 
